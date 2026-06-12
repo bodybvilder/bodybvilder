@@ -1,25 +1,187 @@
 import React from 'react';
 
+/**
+ * BODYBVILDER Official Logo
+ * Letter "B" formed by two muscular flexing arms:
+ * - Vertical spine/bar on the left
+ * - Upper arm creates the top bump of "B"
+ * - Lower arm creates the bottom bump of "B"
+ */
 export default function Logo({ color = 'white', size = 40 }) {
   const fill = color === 'accent' ? 'var(--accent)' : color;
-  
+  const aspect = 75 / 100; // logo is taller than wide
+  const w = size * aspect;
+  const h = size;
+
   return (
-    <svg width={size} height={size * 1.67} viewBox="0 0 141 236" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M70 20 C75 15, 80 18, 82 25 C84 32, 80 38, 75 40 C70 42, 65 38, 65 30 C65 25, 67 22, 70 20Z" fill={fill}/>
-      <path d="M55 45 C60 42, 68 44, 72 50 C75 55, 73 62, 68 65 C62 68, 55 65, 52 58 C50 52, 52 48, 55 45Z" fill={fill}/>
-      <path d="M45 70 C52 68, 60 72, 63 80 C65 88, 60 95, 52 98 C45 100, 38 95, 35 88 C33 80, 38 72, 45 70Z" fill={fill}/>
-      <path d="M40 105 C48 102, 55 108, 58 118 C60 128, 55 138, 45 142 C35 145, 25 138, 22 128 C20 118, 28 108, 40 105Z" fill={fill}/>
-      <path d="M42 150 C50 148, 58 155, 60 168 C62 180, 55 192, 42 195 C30 198, 18 190, 15 178 C12 165, 28 152, 42 150Z" fill={fill}/>
-      <path d="M50 200 C58 198, 65 205, 68 215 C70 225, 62 232, 52 234 C42 236, 32 228, 30 218 C28 208, 38 202, 50 200Z" fill={fill}/>
-      <path d="M85 45 C90 42, 95 45, 98 52 C100 58, 95 65, 88 68 C82 70, 75 65, 75 58 C75 52, 78 48, 85 45Z" fill={fill}/>
-      <path d="M95 75 C102 72, 110 78, 112 88 C114 98, 108 108, 98 112 C88 115, 78 108, 75 98 C73 88, 82 78, 95 75Z" fill={fill}/>
-      <path d="M100 120 C108 118, 118 125, 120 138 C122 150, 115 162, 102 165 C90 168, 78 158, 75 145 C73 132, 85 122, 100 120Z" fill={fill}/>
-      <path d="M95 170 C105 168, 115 178, 118 192 C120 205, 110 218, 95 220 C80 222, 68 210, 65 195 C63 180, 78 172, 95 170Z" fill={fill}/>
-      <path d="M85 225 C92 223, 100 230, 102 240 C104 248, 95 255, 85 255 C75 255, 68 248, 68 238 C68 230, 75 226, 85 225Z" fill={fill}/>
-      <path d="M70 55 C75 52, 82 55, 85 62 C88 70, 82 78, 72 80 C62 82, 55 75, 55 65 C55 58, 62 55, 70 55Z" fill={fill}/>
-      <path d="M72 90 C80 88, 88 95, 90 105 C92 115, 85 125, 72 128 C60 130, 50 120, 48 108 C46 96, 58 92, 72 90Z" fill={fill}/>
-      <path d="M75 135 C85 132, 95 142, 98 155 C100 168, 90 180, 75 182 C60 184, 48 172, 45 158 C43 142, 58 138, 75 135Z" fill={fill}/>
-      <path d="M70 188 C80 185, 92 195, 95 210 C98 225, 85 235, 70 235 C55 235, 42 222, 40 208 C38 192, 55 190, 70 188Z" fill={fill}/>
+    <svg
+      width={w}
+      height={h}
+      viewBox="0 0 75 100"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {/* ── SPINE / Vertical bar (left side of "B") ── */}
+      <rect x="4" y="5" width="10" height="90" rx="3" fill={fill} />
+
+      {/* ══════════════════════════════════════════
+          UPPER ARM — forms the TOP bump of "B"
+          Upper arm goes right from spine, elbow bends
+          down, forearm curls back left (fist visible)
+      ══════════════════════════════════════════ */}
+
+      {/* Upper arm / shoulder mass (top-right bulge) */}
+      <path
+        d="
+          M14 10
+          C14 8, 18 6, 24 8
+          C32 10, 42 12, 50 18
+          C56 22, 60 28, 58 34
+          C56 40, 50 42, 44 40
+          C40 39, 36 36, 32 32
+          L14 28
+          Z
+        "
+        fill={fill}
+      />
+
+      {/* Bicep peak on upper arm */}
+      <path
+        d="
+          M28 8
+          C34 6, 46 8, 54 16
+          C60 22, 62 30, 58 36
+          C55 40, 48 42, 42 39
+        "
+        stroke={fill}
+        strokeWidth="1"
+        fill={fill}
+        opacity="0"
+      />
+
+      {/* Muscle definition lines on upper arm */}
+      <path d="M22 12 C30 10, 44 14, 52 22" stroke="black" strokeWidth="1.5" strokeLinecap="round" opacity="0.35" fill="none" />
+      <path d="M20 18 C26 16, 38 18, 46 26" stroke="black" strokeWidth="1.2" strokeLinecap="round" opacity="0.3" fill="none" />
+      <path d="M18 24 C24 22, 34 24, 40 30" stroke="black" strokeWidth="1" strokeLinecap="round" opacity="0.25" fill="none" />
+
+      {/* Elbow area (upper arm connects to forearm) */}
+      <path
+        d="
+          M44 40
+          C48 41, 52 44, 54 48
+          C56 52, 54 56, 50 56
+          C46 56, 40 52, 36 48
+          L32 32
+          C36 36, 40 39, 44 40
+          Z
+        "
+        fill={fill}
+      />
+
+      {/* Upper forearm / wrist curling back */}
+      <path
+        d="
+          M50 56
+          C52 60, 50 64, 46 66
+          C42 68, 36 66, 32 62
+          C28 58, 26 54, 28 50
+          C30 46, 36 44, 40 46
+          C44 48, 48 54, 50 56
+          Z
+        "
+        fill={fill}
+      />
+
+      {/* Fist / hand fingers upper arm */}
+      <path d="M32 62 C30 64, 28 66, 30 68 C32 70, 36 68, 38 66" stroke={fill} strokeWidth="3" strokeLinecap="round" fill="none" />
+      <path d="M34 64 C33 67, 34 69, 36 68" stroke={fill} strokeWidth="2.5" strokeLinecap="round" fill="none" />
+      <path d="M38 65 C37 68, 38 70, 40 69" stroke={fill} strokeWidth="2.5" strokeLinecap="round" fill="none" />
+
+      {/* Forearm muscle definition */}
+      <path d="M40 46 C44 50, 46 54, 46 58" stroke="black" strokeWidth="1.2" strokeLinecap="round" opacity="0.3" fill="none" />
+      <path d="M36 48 C38 52, 40 56, 40 60" stroke="black" strokeWidth="1" strokeLinecap="round" opacity="0.25" fill="none" />
+
+      {/* ══════════════════════════════════════════
+          LOWER ARM — forms the BOTTOM bump of "B"
+          Mirror/similar to upper but positioned lower
+          and slightly different angle
+      ══════════════════════════════════════════ */}
+
+      {/* Connection between upper and lower (narrow waist of "B") */}
+      <path
+        d="M14 58 C14 56, 18 55, 24 56 C28 57, 30 59, 28 62 C26 64, 20 64, 14 64 Z"
+        fill={fill}
+      />
+
+      {/* Lower arm / shoulder mass (bottom-right bulge) */}
+      <path
+        d="
+          M14 64
+          C14 62, 18 60, 26 62
+          C34 64, 46 68, 54 76
+          C60 82, 62 90, 58 94
+          C54 97, 46 96, 40 92
+          C36 89, 32 84, 28 78
+          L14 72
+          Z
+        "
+        fill={fill}
+      />
+
+      {/* Lower bicep peak — bigger, rounder */}
+      <path
+        d="
+          M24 62
+          C34 60, 50 66, 58 76
+          C64 84, 62 93, 56 96
+        "
+        stroke={fill}
+        strokeWidth="1"
+        fill={fill}
+        opacity="0"
+      />
+
+      {/* Muscle definition lines on lower arm */}
+      <path d="M20 66 C30 64, 46 70, 54 80" stroke="black" strokeWidth="1.5" strokeLinecap="round" opacity="0.35" fill="none" />
+      <path d="M18 72 C26 70, 40 74, 48 84" stroke="black" strokeWidth="1.2" strokeLinecap="round" opacity="0.3" fill="none" />
+      <path d="M16 78 C22 76, 34 80, 42 88" stroke="black" strokeWidth="1" strokeLinecap="round" opacity="0.25" fill="none" />
+
+      {/* Lower elbow area */}
+      <path
+        d="
+          M40 92
+          C44 93, 50 92, 52 88
+          C54 84, 52 80, 48 78
+          C44 76, 38 76, 34 80
+          L28 78
+          C32 84, 36 89, 40 92
+          Z
+        "
+        fill={fill}
+      />
+
+      {/* Lower forearm curling back */}
+      <path
+        d="
+          M48 78
+          C52 76, 54 72, 50 68
+          C46 64, 40 64, 36 66
+          C32 68, 30 72, 32 76
+          C34 80, 40 82, 44 80
+          C46 79, 48 78, 48 78
+          Z
+        "
+        fill={fill}
+      />
+
+      {/* Fist / hand fingers lower arm */}
+      <path d="M32 76 C29 78, 27 80, 29 82 C31 84, 35 83, 37 80" stroke={fill} strokeWidth="3" strokeLinecap="round" fill="none" />
+      <path d="M34 78 C32 81, 33 83, 35 82" stroke={fill} strokeWidth="2.5" strokeLinecap="round" fill="none" />
+      <path d="M38 79 C36 82, 37 84, 39 83" stroke={fill} strokeWidth="2.5" strokeLinecap="round" fill="none" />
+
+      {/* Forearm muscle definition lower */}
+      <path d="M40 64 C42 68, 44 72, 44 76" stroke="black" strokeWidth="1.2" strokeLinecap="round" opacity="0.3" fill="none" />
+      <path d="M36 66 C36 70, 38 74, 38 78" stroke="black" strokeWidth="1" strokeLinecap="round" opacity="0.25" fill="none" />
     </svg>
   );
 }

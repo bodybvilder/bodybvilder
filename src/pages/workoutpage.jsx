@@ -22,6 +22,13 @@ export default function WorkoutPage() {
   const [currentSet, setCurrentSet] = useState(1);
   const [showTips, setShowTips] = useState(false);
   const [workoutStartTime, setWorkoutStartTime] = useState(0);
+
+  // Custom sets & reps — user can override exercise defaults
+  const [customSets, setCustomSets] = useState(null);
+  const [customReps, setCustomReps] = useState(null);
+
+  const targetSets = customSets ?? exercise?.targetSets ?? 3;
+  const targetReps = customReps ?? exercise?.targetReps ?? 12;
   
   const { score, feedback, repCount, resetRepCount } = usePoseDetection(
     videoRef, 
@@ -119,7 +126,7 @@ export default function WorkoutPage() {
   }, [workoutStartTime, score, repCount, exercise]);
   
   const nextSet = () => {
-    if (currentSet < (exercise?.targetSets || 3)) {
+    if (currentSet < targetSets) {
       setCurrentSet(currentSet + 1);
       resetRepCount();
     } else {
@@ -184,7 +191,7 @@ export default function WorkoutPage() {
             }}>
               <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Set </span>
               <span style={{ fontSize: '18px', fontWeight: 800, color: '#fff' }}>
-                {currentSet}/{exercise?.targetSets || 3}
+                {currentSet}/{targetSets}
               </span>
             </div>
             
@@ -253,7 +260,7 @@ export default function WorkoutPage() {
             <div style={{ marginTop: '24px', display: 'flex', gap: '16px' }}>
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--accent)' }}>
-                  {exercise?.targetSets || 3}x{exercise?.isTimed ? `${exercise?.targetReps || 0}s` : (exercise?.targetReps || 0)}
+                  {targetSets}x{exercise?.isTimed ? `${targetReps}s` : targetReps}
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Target</div>
               </div>
@@ -311,7 +318,7 @@ export default function WorkoutPage() {
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff' }}>{exercise?.name || 'Workout'}</div>
               <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)' }}>
-                Set {currentSet}/{exercise?.targetSets || 3}
+                Set {currentSet}/{targetSets}
               </div>
             </div>
             
@@ -366,29 +373,95 @@ export default function WorkoutPage() {
           
           {/* Action Buttons */}
           {!cameraEnabled ? (
-            <button
-              onClick={handleStart}
-              style={{
-                width: '100%',
-                padding: '18px',
+            <>
+              {/* Customize Sets & Reps */}
+              <div style={{
+                background: 'rgba(0,0,0,0.6)',
+                backdropFilter: 'blur(20px)',
                 borderRadius: '16px',
-                border: 'none',
-                background: 'var(--accent)',
-                color: 'var(--bg-primary)',
-                fontSize: '17px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '10px'
-              }}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                <polygon points="5 3 19 12 5 21 5 3"/>
-              </svg>
-              Start Workout
-            </button>
+                padding: '16px',
+                marginBottom: '12px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '12px'
+                }}>
+                  <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    Sets & Reps
+                  </span>
+                  <button
+                    onClick={() => {
+                      setCustomSets(exercise?.targetSets ?? 3);
+                      setCustomReps(exercise?.targetReps ?? 12);
+                    }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '11px', color: 'var(--accent)', fontWeight: 600 }}
+                  >
+                    Reset default
+                  </button>
+                </div>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                  {/* Sets */}
+                  <div style={{ flex: 1, textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>Sets</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                      <button
+                        onClick={() => setCustomSets(Math.max(1, targetSets - 1))}
+                        style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >−</button>
+                      <span style={{ fontSize: '28px', fontWeight: 800, color: '#fff', minWidth: '36px', textAlign: 'center' }}>{targetSets}</span>
+                      <button
+                        onClick={() => setCustomSets(Math.min(20, targetSets + 1))}
+                        style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >+</button>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: '22px', color: 'rgba(255,255,255,0.3)', fontWeight: 300 }}>×</div>
+
+                  {/* Reps */}
+                  <div style={{ flex: 1, textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>{exercise?.isTimed ? 'Secs' : 'Reps'}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                      <button
+                        onClick={() => setCustomReps(Math.max(1, targetReps - 1))}
+                        style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >−</button>
+                      <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--accent)', minWidth: '36px', textAlign: 'center' }}>{targetReps}</span>
+                      <button
+                        onClick={() => setCustomReps(Math.min(200, targetReps + 1))}
+                        style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >+</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleStart}
+                style={{
+                  width: '100%',
+                  padding: '18px',
+                  borderRadius: '16px',
+                  border: 'none',
+                  background: 'var(--accent)',
+                  color: 'var(--bg-primary)',
+                  fontSize: '17px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px'
+                }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+                Start {targetSets}×{targetReps} Workout
+              </button>
+            </>
           ) : (
             <div style={{ display: 'flex', gap: '12px' }}>
               <button
@@ -427,7 +500,7 @@ export default function WorkoutPage() {
                   cursor: 'pointer'
                 }}
               >
-                {currentSet < (exercise?.targetSets || 3) ? 'Next Set' : 'Finish Workout'}
+              {currentSet < targetSets ? 'Next Set' : 'Finish Workout'}
               </button>
             </div>
           )}
