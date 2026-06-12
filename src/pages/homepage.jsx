@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Logo from '../components/logo';
 import ExerciseCard from '../components/exercisecard';
 import StreakBadge from '../components/streakbadge';
 import { exercises, categories, getExercisesByCategory } from '../data/exercises';

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Logo from '../components/logo';
 import ScoreBadge from '../components/scorebadge';
 
 export default function StatsPage() {

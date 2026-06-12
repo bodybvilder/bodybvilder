@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { usePoseDetection } from '../hooks/useposedetection';
 import SkeletonOverlay from '../components/skeletonoverlay';
-import ScoreBadge from '../components/scorebadge';
 import WorkoutTimer from '../components/workouttimer';
 import ShareCard from '../components/sharecard';
 import { getExerciseById } from '../data/exercises';
@@ -24,7 +23,7 @@ export default function WorkoutPage() {
   const [showTips, setShowTips] = useState(false);
   const [workoutStartTime, setWorkoutStartTime] = useState(0);
   
-  const { isReady, score, feedback, repCount, resetRepCount } = usePoseDetection(
+  const { score, feedback, repCount, resetRepCount } = usePoseDetection(
     videoRef, 
     canvasRef, 
     cameraEnabled && isWorkoutActive
