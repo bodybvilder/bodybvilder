@@ -417,7 +417,7 @@ export const exercises = [
     category: 'core',
     muscles: ['lower-abs', 'hip-flexors'],
     description: 'Lie on back, raise straight legs to vertical. Lower abs isolation.',
-    tips: ['Lower back flat', 'Legs straight', 'Control descent', 'Don\'t let legs touch floor'],
+    tips: ['Lower back flat', 'Legs straight', 'Control descent', 'Never let legs touch floor'],
     targetReps: 15,
     targetSets: 3,
     difficulty: 'intermediate',
