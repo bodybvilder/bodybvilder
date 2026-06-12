@@ -1,0 +1,25 @@
+{
+  "short_name": "BODYBVILDER",
+  "name": "BODYBVILDER - AI Form Coach",
+  "description": "AI-powered bodybuilding form coach with real-time pose estimation",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0a0a0f",
+  "background_color": "#0a0a0f",
+  "categories": ["health", "fitness", "sports"]
+}

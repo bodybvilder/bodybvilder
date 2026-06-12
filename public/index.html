@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="BODYBVILDER - AI Form Coach. Perfect your form with real-time AI pose estimation." />
+  <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+  <link rel="apple-touch-icon" href="%PUBLIC_URL%/icon-192.png" />
+  <title>BODYBVILDER</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #14141a;
+      --bg-tertiary: #1e1e28;
+      --accent: #00FF88;
+      --accent-dim: rgba(0,255,136,0.15);
+      --text-primary: #ffffff;
+      --text-secondary: #8a8a9a;
+      --text-muted: #5a5a6a;
+      --danger: #ff4444;
+      --warning: #ffaa00;
+      --success: #00FF88;
+      --overlay: rgba(0,0,0,0.7);
+      --glass: rgba(20,20,26,0.85);
+    }
+    :root[data-theme="light"] {
+      --bg-primary: #f5f5f5;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e8e8e8;
+      --accent: #00CC6A;
+      --accent-dim: rgba(0,204,106,0.15);
+      --text-primary: #1a1a1a;
+      --text-secondary: #666666;
+      --text-muted: #999999;
+      --danger: #e53935;
+      --warning: #f57c00;
+      --success: #00CC6A;
+      --overlay: rgba(0,0,0,0.5);
+      --glass: rgba(255,255,255,0.9);
+    }
+    :root[data-theme="cyber"] {
+      --bg-primary: #0d0221;
+      --bg-secondary: #1a0b2e;
+      --bg-tertiary: #261242;
+      --accent: #ff00ff;
+      --accent-dim: rgba(255,0,255,0.15);
+      --text-primary: #e0e0ff;
+      --text-secondary: #a090c0;
+      --text-muted: #705090;
+      --danger: #ff3366;
+      --warning: #ffcc00;
+      --success: #00ffcc;
+      --overlay: rgba(13,2,33,0.8);
+      --glass: rgba(26,11,46,0.85);
+    }
+    :root[data-theme="sunset"] {
+      --bg-primary: #1a0a00;
+      --bg-secondary: #2a1405;
+      --bg-tertiary: #3a1e0a;
+      --accent: #ff6b35;
+      --accent-dim: rgba(255,107,53,0.15);
+      --text-primary: #fff5e6;
+      --text-secondary: #ccaa88;
+      --text-muted: #997755;
+      --danger: #ff4444;
+      --warning: #ffaa00;
+      --success: #ff6b35;
+      --overlay: rgba(26,10,0,0.8);
+      --glass: rgba(42,20,5,0.85);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    #root { height: 100vh; height: 100dvh; }
+    ::-webkit-scrollbar { width: 0; height: 0; }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .pulse-glow { animation: pulseGlow 2s ease-in-out infinite; }
+    @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 0 0 var(--accent-dim); } 50% { box-shadow: 0 0 20px 4px var(--accent-dim); } }
+    .shimmer { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  </style>
+  <script>
+    window.BodyBilderTheme = {
+      current: localStorage.getItem('bv-theme') || 'dark',
+      set: function(t) { this.current = t; document.documentElement.setAttribute('data-theme', t); localStorage.setItem('bv-theme', t); },
+      get: function() { return this.current; },
+      toggle: function() { const themes = ['dark','light','cyber','sunset']; const i = themes.indexOf(this.current); this.set(themes[(i+1)%themes.length]); }
+    };
+    window.BodyBilderTheme.set(window.BodyBilderTheme.current);
+  </script>
+</head>
+<body>
+  <noscript>Enable JavaScript to use BODYBVILDER.</noscript>
+  <div id="root"></div>
+</body>
+</html>
