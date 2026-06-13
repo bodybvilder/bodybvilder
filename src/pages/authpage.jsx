@@ -68,14 +68,14 @@ export default function AuthPage({ onGuest }) {
             marginBottom: '12px',
             color: 'var(--text-0)',
           }}>
-            Train smarter.<br />
+            Your AI Form Coach.<br />
             <span style={{
               background: 'var(--gradient-accent)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
             }}>
-              Not harder.
+              Real-time form correction. Rep counting. Performance scoring.
             </span>
           </h1>
           <p style={{
@@ -85,7 +85,7 @@ export default function AuthPage({ onGuest }) {
             maxWidth: '280px',
             margin: '0 auto',
           }}>
-            Real-time AI form coaching. Free, forever. No gym required.
+            Free, forever.
           </p>
         </div>
 
