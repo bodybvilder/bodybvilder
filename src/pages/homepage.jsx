@@ -4,9 +4,16 @@ import Logo from '../components/logo';
 import StreakBadge from '../components/streakbadge';
 import { exercises, categories, getExercisesByCategory } from '../data/exercises';
 
+// ── SVG CATEGORY ICONS (NO EMOJI) ──────────────────────────────────────
 const CATEGORY_ICONS = {
-  all: '✦', chest: '🫁', back: '🏋️', shoulders: '💪',
-  triceps: '💥', arms: '🦾', legs: '🦵', core: '⚡',
+  all: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>,
+  chest: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 12c0-4-3-8-8-8s-8 4-8 8 3 8 8 8 8-4 8-8z"/><path d="M12 8v8M8 12h8"/></svg>,
+  back: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 12h16M4 12l4-4M4 12l4 4M20 12l-4-4M20 12l-4 4"/></svg>,
+  shoulders: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2v20M2 12h20"/></svg>,
+  triceps: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 4l12 16M18 4l-12 16"/></svg>,
+  arms: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 4l12 16M18 4l-12 16"/></svg>,
+  legs: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 3v18M7 8l5-5 5 5M7 16l5 5 5-5"/></svg>,
+  core: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="9"/></svg>,
 };
 
 const DIFFICULTY_COLOR = {
@@ -14,6 +21,24 @@ const DIFFICULTY_COLOR = {
   intermediate: 'var(--orange)',
   advanced: 'var(--red)',
 };
+
+// ── SVG WAVE ICON FOR GREETING ─────────────────────────────────────────
+const WaveIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round">
+    <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12s4.477 10 10 10 10-4.477 10-10z"/>
+    <path d="M8 14c1.5 2 4 2 5.5 0 1.5-2 4-2 5.5 0"/>
+    <path d="M9 9h.01M15 9h.01"/>
+  </svg>
+);
+
+// ── SVG SEARCH ICON FOR EMPTY STATE ────────────────────────────────────
+const SearchEmptyIcon = () => (
+  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="1.5" strokeLinecap="round">
+    <circle cx="11" cy="11" r="8"/>
+    <path d="M21 21l-4.35-4.35"/>
+    <line x1="8" y1="8" x2="14" y2="14"/>
+  </svg>
+);
 
 export default function HomePage({ user, isGuest }) {
   const [activeCategory, setActiveCategory] = useState('all');
@@ -65,8 +90,18 @@ export default function HomePage({ user, isGuest }) {
           <p style={{ fontSize: '12px', color: 'var(--text-2)', fontWeight: 500, marginBottom: '2px' }}>
             {greeting}
           </p>
-          <h1 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-0)', letterSpacing: '-0.03em', lineHeight: 1 }}>
-            {firstName} 👋
+          <h1 style={{ 
+            fontSize: '22px', 
+            fontWeight: 800, 
+            color: 'var(--text-0)', 
+            letterSpacing: '-0.03em', 
+            lineHeight: 1,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            {firstName}
+            <WaveIcon />
           </h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -197,7 +232,13 @@ export default function HomePage({ user, isGuest }) {
                 transform: active ? 'scale(1.04)' : 'scale(1)',
               }}
             >
-              <span style={{ fontSize: '14px' }}>{CATEGORY_ICONS[cat.id]}</span>
+              <span style={{ 
+                display: 'flex', 
+                alignItems: 'center',
+                opacity: active ? 1 : 0.7 
+              }}>
+                {CATEGORY_ICONS[cat.id]}
+              </span>
               {cat.name}
             </button>
           );
@@ -221,7 +262,13 @@ export default function HomePage({ user, isGuest }) {
           color: 'var(--text-2)',
           animation: 'fadeUp 0.4s ease both',
         }}>
-          <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔍</div>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            marginBottom: '12px' 
+          }}>
+            <SearchEmptyIcon />
+          </div>
           <p style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-1)', marginBottom: '6px' }}>No exercises found</p>
           <p style={{ fontSize: '14px', color: 'var(--text-2)' }}>Try a different search</p>
         </div>

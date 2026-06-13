@@ -1,42 +1,136 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ScoreBadge from '../components/scorebadge';
+import ScoreBadge from '../components/ScoreBadge';
+
+// ── SVG ICONS (NO EMOJI) ─────────────────────────────────────────────────
+const FlameIcon = ({ size = 20, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a5 5 0 11-10 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5-2.5z"/>
+  </svg>
+);
+
+const ChartIcon = ({ size = 20, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="20" x2="18" y2="10"/>
+    <line x1="12" y1="20" x2="12" y2="4"/>
+    <line x1="6" y1="20" x2="6" y2="14"/>
+  </svg>
+);
+
+const TrophyIcon = ({ size = 20, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 9H4.5a2.5 2.5 0 010-5H6"/>
+    <path d="M18 9h1.5a2.5 2.5 0 000-5H18"/>
+    <path d="M4 22h16"/>
+    <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+    <path d="M18 2H6v7a6 6 0 0012 0V2z"/>
+  </svg>
+);
+
+const TrendIcon = ({ size = 20, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+    <polyline points="17 6 23 6 23 12"/>
+  </svg>
+);
+
+const ClockIcon = ({ size = 20, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <polyline points="12 6 12 12 16 14"/>
+  </svg>
+);
+
+const ArrowLeftIcon = ({ size = 24, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 12H5M12 19l-7-7 7-7"/>
+  </svg>
+);
+
+// ── SAFE DEFAULT STATS ───────────────────────────────────────────────────
+const DEFAULT_STATS = {
+  workoutsCompleted: 0,
+  streak: 0,
+  totalReps: 0,
+  totalTime: 0,
+  lastWorkout: null,
+  weeklyWorkouts: [0, 0, 0, 0, 0, 0, 0]
+};
+
+const DEFAULT_HISTORY = [];
 
 export default function StatsPage() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({
-    workoutsCompleted: 0,
-    streak: 0,
-    totalReps: 0,
-    totalTime: 0,
-    lastWorkout: null,
-    weeklyWorkouts: [0, 0, 0, 0, 0, 0, 0]
-  });
-  const [history, setHistory] = useState([]);
+  const [stats, setStats] = useState(DEFAULT_STATS);
+  const [history, setHistory] = useState(DEFAULT_HISTORY);
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    const saved = localStorage.getItem('bv-stats');
-    if (saved) {
-      setStats(JSON.parse(saved));
-    }
-    const hist = localStorage.getItem('bv-history');
-    if (hist) {
-      setHistory(JSON.parse(hist).slice(-10).reverse());
+    try {
+      // Load stats with safe fallback
+      const savedStats = localStorage.getItem('bv-stats');
+      if (savedStats) {
+        const parsed = JSON.parse(savedStats);
+        setStats({
+          workoutsCompleted: parsed.workoutsCompleted || 0,
+          streak: parsed.streak || 0,
+          totalReps: parsed.totalReps || 0,
+          totalTime: parsed.totalTime || 0,
+          lastWorkout: parsed.lastWorkout || null,
+          weeklyWorkouts: Array.isArray(parsed.weeklyWorkouts) ? parsed.weeklyWorkouts : [0,0,0,0,0,0,0]
+        });
+      }
+
+      // Load history with safe fallback
+      const savedHistory = localStorage.getItem('bv-history');
+      if (savedHistory) {
+        const parsed = JSON.parse(savedHistory);
+        if (Array.isArray(parsed)) {
+          setHistory(parsed.slice(-10).reverse());
+        }
+      }
+    } catch (err) {
+      console.error('Stats load error:', err);
+      // Keep defaults on error
+    } finally {
+      setIsLoading(false);
     }
   }, []);
   
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const today = new Date().getDay();
-
-  // Build last-7-days in order: oldest → today
-  // Each entry carries the real weeklyWorkouts index so the bar value is correct
+  
+  // Build week days array starting from 6 days ago
   const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const dayIndex = (today - 6 + i + 7) % 7;
-    return { label: days[dayIndex], index: dayIndex };
+    const idx = (today - 6 + i + 7) % 7;
+    return days[idx];
   });
-
+  
   const maxWeekly = Math.max(...stats.weeklyWorkouts, 1);
   
+  if (isLoading) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        background: 'var(--bg-primary)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: '3px solid var(--bg-tertiary)',
+          borderTopColor: 'var(--accent)',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
   return (
     <div style={{ 
       minHeight: '100vh', 
@@ -57,12 +151,13 @@ export default function StatsPage() {
             border: 'none',
             cursor: 'pointer',
             padding: '8px',
-            color: 'var(--text-primary)'
+            color: 'var(--text-primary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
+          <ArrowLeftIcon size={24} />
         </button>
         <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>
           Your Progress
@@ -83,9 +178,7 @@ export default function StatsPage() {
           border: '1px solid rgba(255,255,255,0.03)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2">
-              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-            </svg>
+            <FlameIcon size={20} color="var(--accent)" />
             <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
               Workouts
             </span>
@@ -102,9 +195,7 @@ export default function StatsPage() {
           border: '1px solid rgba(255,255,255,0.03)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--accent)">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-            </svg>
+            <TrophyIcon size={20} color="var(--accent)" />
             <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
               Day Streak
             </span>
@@ -121,9 +212,7 @@ export default function StatsPage() {
           border: '1px solid rgba(255,255,255,0.03)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2">
-              <path d="M17 18a5 5 0 00-10 0M12 2v8M8 6l4-4 4 4"/>
-            </svg>
+            <TrendIcon size={20} color="var(--text-secondary)" />
             <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
               Total Reps
             </span>
@@ -140,10 +229,7 @@ export default function StatsPage() {
           border: '1px solid rgba(255,255,255,0.03)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" strokeWidth="2">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12 6 12 12 16 14"/>
-            </svg>
+            <ClockIcon size={20} color="var(--text-secondary)" />
             <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
               Minutes
             </span>
@@ -177,13 +263,13 @@ export default function StatsPage() {
           height: '120px',
           gap: '8px'
         }}>
-          {weekDays.map(({ label, index }, i) => {
-            const count = stats.weeklyWorkouts[index] || 0;
-            const heightPct = `${(count / maxWeekly) * 100}%`;
+          {weekDays.map((day, i) => {
+            const dayValue = stats.weeklyWorkouts[i] || 0;
+            const height = `${(dayValue / maxWeekly) * 100}%`;
             const isToday = i === 6;
-
+            
             return (
-              <div key={label} style={{ 
+              <div key={day} style={{ 
                 flex: 1, 
                 display: 'flex', 
                 flexDirection: 'column', 
@@ -199,7 +285,7 @@ export default function StatsPage() {
                 }}>
                   <div style={{
                     width: isToday ? '100%' : '70%',
-                    height: count > 0 ? heightPct : '4px',
+                    height: dayValue > 0 ? height : '4px',
                     background: isToday ? 'var(--accent)' : 'var(--bg-tertiary)',
                     borderRadius: '6px 6px 0 0',
                     minHeight: '4px',
@@ -211,7 +297,7 @@ export default function StatsPage() {
                   fontWeight: isToday ? 700 : 500,
                   color: isToday ? 'var(--accent)' : 'var(--text-muted)'
                 }}>
-                  {label}
+                  {day}
                 </span>
               </div>
             );
@@ -238,11 +324,18 @@ export default function StatsPage() {
             textAlign: 'center',
             color: 'var(--text-muted)'
           }}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: '12px', opacity: 0.5 }}>
-              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-            </svg>
-            <p style={{ fontSize: '14px' }}>No workouts yet</p>
-            <p style={{ fontSize: '13px', marginTop: '4px' }}>Complete your first workout to see it here</p>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              marginBottom: '12px',
+              opacity: 0.5
+            }}>
+              <ChartIcon size={40} color="currentColor" />
+            </div>
+            <p style={{ fontSize: '14px', fontWeight: 600 }}>No workouts yet</p>
+            <p style={{ fontSize: '13px', marginTop: '4px', opacity: 0.7 }}>
+              Complete your first workout to see it here
+            </p>
           </div>
         ) : (
           history.map((item, i) => (
@@ -256,17 +349,17 @@ export default function StatsPage() {
               gap: '16px',
               border: '1px solid rgba(255,255,255,0.03)'
             }}>
-              <ScoreBadge score={item.score} size="sm" />
+              <ScoreBadge score={item.score || 0} size="sm" />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  {item.exerciseName}
+                  {item.exerciseName || 'Workout'}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  {item.reps} reps • {Math.floor(item.duration / 60)}m {item.duration % 60}s
+                  {item.reps || 0} reps • {Math.floor((item.duration || 0) / 60)}m {(item.duration || 0) % 60}s
                 </div>
               </div>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                {item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-'}
               </div>
             </div>
           ))

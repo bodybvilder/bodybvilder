@@ -6,6 +6,52 @@ import WorkoutTimer from '../components/workouttimer';
 import ShareCard from '../components/sharecard';
 import { getExerciseById } from '../data/exercises';
 
+// ── SVG ICONS (NO EMOJI) ─────────────────────────────────────────────────
+const CameraIcon = ({ size = 48, color = 'var(--accent)' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+    <circle cx="12" cy="13" r="4"/>
+  </svg>
+);
+
+const ArrowLeftIcon = ({ size = 20, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 12H5M12 19l-7-7 7-7"/>
+  </svg>
+);
+
+const InfoIcon = ({ size = 20, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M12 16v-4M12 8h.01"/>
+  </svg>
+);
+
+const PlayIcon = ({ size = 22, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+    <polygon points="5 3 19 12 5 21 5 3"/>
+  </svg>
+);
+
+const MinusIcon = ({ size = 16, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round">
+    <line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+);
+
+const PlusIcon = ({ size = 16, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round">
+    <line x1="12" y1="5" x2="12" y2="19"/>
+    <line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+);
+
+const CheckIcon = ({ size = 16, color = 'var(--accent)' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
+
 export default function WorkoutPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -78,51 +124,55 @@ export default function WorkoutPage() {
     setShowShareCard(true);
     
     // Save stats
-    const saved = localStorage.getItem('bv-stats');
-    const stats = saved ? JSON.parse(saved) : { 
-      workoutsCompleted: 0, 
-      streak: 0, 
-      lastWorkout: null, 
-      totalReps: 0,
-      totalTime: 0,
-      weeklyWorkouts: [0,0,0,0,0,0,0]
-    };
-    
-    stats.workoutsCompleted += 1;
-    stats.totalReps += repCount;
-    stats.totalTime += (duration || 0);
-    
-    const today = new Date();
-    const dayIndex = today.getDay();
-    stats.weeklyWorkouts[dayIndex] = (stats.weeklyWorkouts[dayIndex] || 0) + 1;
-    
-    const todayStr = today.toDateString();
-    if (stats.lastWorkout !== todayStr) {
-      const lastDate = stats.lastWorkout ? new Date(stats.lastWorkout) : null;
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
+    try {
+      const saved = localStorage.getItem('bv-stats');
+      const stats = saved ? JSON.parse(saved) : { 
+        workoutsCompleted: 0, 
+        streak: 0, 
+        lastWorkout: null, 
+        totalReps: 0,
+        totalTime: 0,
+        weeklyWorkouts: [0,0,0,0,0,0,0]
+      };
       
-      if (lastDate && lastDate.toDateString() === yesterday.toDateString()) {
-        stats.streak += 1;
-      } else if (!lastDate || lastDate.toDateString() !== todayStr) {
-        stats.streak = 1;
+      stats.workoutsCompleted += 1;
+      stats.totalReps += repCount;
+      stats.totalTime += (duration || 0);
+      
+      const today = new Date();
+      const dayIndex = today.getDay();
+      stats.weeklyWorkouts[dayIndex] = (stats.weeklyWorkouts[dayIndex] || 0) + 1;
+      
+      const todayStr = today.toDateString();
+      if (stats.lastWorkout !== todayStr) {
+        const lastDate = stats.lastWorkout ? new Date(stats.lastWorkout) : null;
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        if (lastDate && lastDate.toDateString() === yesterday.toDateString()) {
+          stats.streak += 1;
+        } else if (!lastDate || lastDate.toDateString() !== todayStr) {
+          stats.streak = 1;
+        }
+        stats.lastWorkout = todayStr;
       }
-      stats.lastWorkout = todayStr;
+      
+      localStorage.setItem('bv-stats', JSON.stringify(stats));
+      
+      // Save history
+      const hist = localStorage.getItem('bv-history');
+      const history = hist ? JSON.parse(hist) : [];
+      history.push({
+        exerciseName: exercise?.name || 'Workout',
+        score: Math.round(score),
+        reps: repCount,
+        duration: duration || 0,
+        date: new Date().toISOString()
+      });
+      localStorage.setItem('bv-history', JSON.stringify(history.slice(-50)));
+    } catch (err) {
+      console.error('Save workout error:', err);
     }
-    
-    localStorage.setItem('bv-stats', JSON.stringify(stats));
-    
-    // Save history
-    const hist = localStorage.getItem('bv-history');
-    const history = hist ? JSON.parse(hist) : [];
-    history.push({
-      exerciseName: exercise.name,
-      score: Math.round(score),
-      reps: repCount,
-      duration: duration || 0,
-      date: new Date().toISOString()
-    });
-    localStorage.setItem('bv-history', JSON.stringify(history.slice(-50)));
   }, [workoutStartTime, score, repCount, exercise]);
   
   const nextSet = () => {
@@ -246,10 +296,7 @@ export default function WorkoutPage() {
               justifyContent: 'center',
               marginBottom: '24px'
             }}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2">
-                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
+              <CameraIcon size={48} color="var(--accent)" />
             </div>
             <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '8px', color: 'var(--text-primary)' }}>
               {exercise?.name || 'Workout'}
@@ -310,9 +357,7 @@ export default function WorkoutPage() {
                 backdropFilter: 'blur(10px)'
               }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M19 12H5M12 19l-7-7 7-7"/>
-              </svg>
+              <ArrowLeftIcon size={20} />
             </button>
             
             <div style={{ textAlign: 'center' }}>
@@ -334,10 +379,7 @@ export default function WorkoutPage() {
                 backdropFilter: 'blur(10px)'
               }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M12 16v-4M12 8h.01"/>
-              </svg>
+              <InfoIcon size={20} />
             </button>
           </div>
           
@@ -362,9 +404,7 @@ export default function WorkoutPage() {
                   color: 'rgba(255,255,255,0.8)',
                   fontSize: '14px'
                 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
+                  <CheckIcon size={16} color="var(--accent)" />
                   {tip}
                 </div>
               ))}
@@ -408,13 +448,17 @@ export default function WorkoutPage() {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
                       <button
                         onClick={() => setCustomSets(Math.max(1, targetSets - 1))}
-                        style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >−</button>
+                        style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <MinusIcon size={16} />
+                      </button>
                       <span style={{ fontSize: '28px', fontWeight: 800, color: '#fff', minWidth: '36px', textAlign: 'center' }}>{targetSets}</span>
                       <button
                         onClick={() => setCustomSets(Math.min(20, targetSets + 1))}
-                        style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >+</button>
+                        style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <PlusIcon size={16} />
+                      </button>
                     </div>
                   </div>
 
@@ -426,13 +470,17 @@ export default function WorkoutPage() {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
                       <button
                         onClick={() => setCustomReps(Math.max(1, targetReps - 1))}
-                        style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >−</button>
+                        style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <MinusIcon size={16} />
+                      </button>
                       <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--accent)', minWidth: '36px', textAlign: 'center' }}>{targetReps}</span>
                       <button
                         onClick={() => setCustomReps(Math.min(200, targetReps + 1))}
-                        style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >+</button>
+                        style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <PlusIcon size={16} />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -456,9 +504,7 @@ export default function WorkoutPage() {
                   gap: '10px'
                 }}
               >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                  <polygon points="5 3 19 12 5 21 5 3"/>
-                </svg>
+                <PlayIcon size={22} color="var(--bg-primary)" />
                 Start {targetSets}×{targetReps} Workout
               </button>
             </>
@@ -500,7 +546,7 @@ export default function WorkoutPage() {
                   cursor: 'pointer'
                 }}
               >
-              {currentSet < targetSets ? 'Next Set' : 'Finish Workout'}
+                {currentSet < targetSets ? 'Next Set' : 'Finish Workout'}
               </button>
             </div>
           )}
