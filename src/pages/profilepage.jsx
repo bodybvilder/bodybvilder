@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Logo from '../components/logo';
 import ThemeToggle from '../components/themetoggle';
+import { signOutUser } from '../firebase';
 
-export default function ProfilePage() {
+export default function ProfilePage({ user, isGuest }) {
   const navigate = useNavigate();
   const [stats, setStats] = useState({ workoutsCompleted: 0, streak: 0, totalReps: 0 });
   const [notifications, setNotifications] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  
+
   useEffect(() => {
     const saved = localStorage.getItem('bv-stats');
     if (saved) setStats(JSON.parse(saved));
-    
     const notif = localStorage.getItem('bv-notifications');
     if (notif !== null) setNotifications(JSON.parse(notif));
     
@@ -136,15 +135,22 @@ export default function ProfilePage() {
             alignItems: 'center',
             justifyContent: 'center',
             margin: '0 auto 16px',
-            border: '3px solid var(--accent)'
+            border: '3px solid var(--accent)',
+            overflow: 'hidden',
           }}>
-            <Logo color="accent" size={44} />
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <span style={{ fontSize: '28px', fontWeight: 900, color: 'var(--accent)' }}>
+                {isGuest ? '👤' : (user?.displayName?.[0] || 'B')}
+              </span>
+            )}
           </div>
           <h2 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
-            BODYBVILDER
+            {isGuest ? 'Guest Athlete' : (user?.displayName || 'BODYBVILDER')}
           </h2>
           <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-            AI Form Coach v1.0
+            {isGuest ? 'Sign in to sync progress' : (user?.email || 'AI Form Coach')}
           </p>
           
           <div style={{ 
@@ -327,14 +333,47 @@ export default function ProfilePage() {
           </button>
         </div>
         
-        {/* About */}
+        {/* Sign Out / About */}
+        {!isGuest && (
+          <div style={{
+            background: 'var(--bg-secondary)',
+            borderRadius: '20px',
+            padding: '0 20px',
+            marginBottom: '20px',
+            border: '1px solid rgba(255,255,255,0.03)'
+          }}>
+            <button
+              onClick={() => signOutUser()}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '16px 0',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '36px', height: '36px', borderRadius: '10px',
+                  background: 'var(--bg-tertiary)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                  </svg>
+                </div>
+                <span style={{ fontSize: '15px', fontWeight: 500 }}>Sign Out</span>
+              </div>
+            </button>
+          </div>
+        )}
         <div style={{ textAlign: 'center', padding: '20px' }}>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            BODYBVILDER v1.0
-          </p>
-          <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            AI-powered form coaching for everyone
-          </p>
+          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>BODYBVILDER</p>
+          <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>AI-powered form coaching for everyone</p>
         </div>
       </div>
     </div>

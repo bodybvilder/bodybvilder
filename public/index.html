@@ -3,102 +3,320 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="theme-color" content="#0a0a0a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="description" content="BODYBVILDER - AI Form Coach. Perfect your form with real-time AI pose estimation." />
+  <meta name="description" content="BODYBVILDER — AI Form Coach. Real-time pose analysis, rep counting, and personalized feedback." />
   <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
   <link rel="apple-touch-icon" href="%PUBLIC_URL%/icon-192.png" />
   <title>BODYBVILDER</title>
+
+  <!-- Inter font from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    :root {
-      --bg-primary: #0a0a0f;
-      --bg-secondary: #14141a;
-      --bg-tertiary: #1e1e28;
-      --accent: #00FF88;
-      --accent-dim: rgba(0,255,136,0.15);
-      --text-primary: #ffffff;
-      --text-secondary: #8a8a9a;
-      --text-muted: #5a5a6a;
-      --danger: #ff4444;
-      --warning: #ffaa00;
-      --success: #00FF88;
-      --overlay: rgba(0,0,0,0.7);
-      --glass: rgba(20,20,26,0.85);
+    *, *::before, *::after {
+      margin: 0; padding: 0;
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
     }
+
+    /* ── Design Tokens: Dark (default) ── */
+    :root {
+      --bg-0: #0a0a0a;
+      --bg-1: #111111;
+      --bg-2: #1a1a1a;
+      --bg-3: #222222;
+      --bg-card: rgba(255,255,255,0.04);
+      --bg-card-hover: rgba(255,255,255,0.07);
+
+      --accent: #C8FF00;
+      --accent-2: #39FF14;
+      --accent-dim: rgba(200,255,0,0.12);
+      --accent-glow: 0 0 24px rgba(200,255,0,0.25);
+
+      --gradient-accent: linear-gradient(135deg, #C8FF00 0%, #39FF14 100%);
+      --gradient-dark: linear-gradient(180deg, rgba(10,10,10,0) 0%, #0a0a0a 100%);
+      --gradient-card: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
+
+      --text-0: #ffffff;
+      --text-1: #e0e0e0;
+      --text-2: #888888;
+      --text-3: #555555;
+
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.14);
+
+      --red: #FF3B3B;
+      --orange: #FF9500;
+      --green: #34C759;
+
+      --radius-sm: 12px;
+      --radius-md: 18px;
+      --radius-lg: 24px;
+      --radius-xl: 32px;
+      --radius-full: 999px;
+
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.3);
+      --shadow-md: 0 8px 32px rgba(0,0,0,0.4);
+      --shadow-lg: 0 20px 60px rgba(0,0,0,0.5);
+
+      --safe-top: env(safe-area-inset-top);
+      --safe-bottom: env(safe-area-inset-bottom);
+
+      /* Legacy aliases for compatibility */
+      --bg-primary: var(--bg-0);
+      --bg-secondary: var(--bg-1);
+      --bg-tertiary: var(--bg-2);
+      --text-primary: var(--text-0);
+      --text-secondary: var(--text-2);
+      --text-muted: var(--text-3);
+      --danger: var(--red);
+      --warning: var(--orange);
+      --success: var(--green);
+      --overlay: rgba(0,0,0,0.75);
+      --glass: rgba(17,17,17,0.9);
+    }
+
+    /* ── Light theme ── */
     :root[data-theme="light"] {
-      --bg-primary: #f5f5f5;
-      --bg-secondary: #ffffff;
-      --bg-tertiary: #e8e8e8;
-      --accent: #00CC6A;
-      --accent-dim: rgba(0,204,106,0.15);
-      --text-primary: #1a1a1a;
-      --text-secondary: #666666;
-      --text-muted: #999999;
-      --danger: #e53935;
-      --warning: #f57c00;
-      --success: #00CC6A;
+      --bg-0: #f5f5f0;
+      --bg-1: #ffffff;
+      --bg-2: #ebebeb;
+      --bg-3: #e0e0e0;
+      --bg-card: rgba(0,0,0,0.04);
+      --bg-card-hover: rgba(0,0,0,0.07);
+      --accent: #4CAF00;
+      --accent-2: #2e7d00;
+      --accent-dim: rgba(76,175,0,0.1);
+      --accent-glow: 0 0 24px rgba(76,175,0,0.2);
+      --gradient-accent: linear-gradient(135deg, #4CAF00 0%, #2e7d00 100%);
+      --gradient-dark: linear-gradient(180deg, rgba(245,245,240,0) 0%, #f5f5f0 100%);
+      --text-0: #0a0a0a;
+      --text-1: #1a1a1a;
+      --text-2: #666666;
+      --text-3: #999999;
+      --border: rgba(0,0,0,0.08);
+      --border-strong: rgba(0,0,0,0.14);
+      --bg-primary: var(--bg-0);
+      --bg-secondary: var(--bg-1);
+      --bg-tertiary: var(--bg-2);
+      --text-primary: var(--text-0);
+      --text-secondary: var(--text-2);
+      --text-muted: var(--text-3);
       --overlay: rgba(0,0,0,0.5);
       --glass: rgba(255,255,255,0.9);
     }
+
+    /* ── Cyber theme ── */
     :root[data-theme="cyber"] {
-      --bg-primary: #0d0221;
-      --bg-secondary: #1a0b2e;
-      --bg-tertiary: #261242;
-      --accent: #ff00ff;
-      --accent-dim: rgba(255,0,255,0.15);
-      --text-primary: #e0e0ff;
-      --text-secondary: #a090c0;
-      --text-muted: #705090;
-      --danger: #ff3366;
-      --warning: #ffcc00;
-      --success: #00ffcc;
-      --overlay: rgba(13,2,33,0.8);
-      --glass: rgba(26,11,46,0.85);
+      --bg-0: #080012;
+      --bg-1: #0f0020;
+      --bg-2: #180030;
+      --bg-card: rgba(255,0,255,0.06);
+      --accent: #FF00FF;
+      --accent-2: #CC00FF;
+      --accent-dim: rgba(255,0,255,0.12);
+      --accent-glow: 0 0 30px rgba(255,0,255,0.3);
+      --gradient-accent: linear-gradient(135deg, #FF00FF 0%, #CC00FF 100%);
+      --text-0: #ffffff;
+      --text-1: #ddccff;
+      --text-2: #8866aa;
+      --text-3: #554477;
+      --border: rgba(255,0,255,0.1);
+      --bg-primary: var(--bg-0);
+      --bg-secondary: var(--bg-1);
+      --bg-tertiary: var(--bg-2);
+      --text-primary: var(--text-0);
+      --text-secondary: var(--text-2);
+      --text-muted: var(--text-3);
     }
+
+    /* ── Sunset theme ── */
     :root[data-theme="sunset"] {
-      --bg-primary: #1a0a00;
-      --bg-secondary: #2a1405;
-      --bg-tertiary: #3a1e0a;
-      --accent: #ff6b35;
-      --accent-dim: rgba(255,107,53,0.15);
-      --text-primary: #fff5e6;
-      --text-secondary: #ccaa88;
-      --text-muted: #997755;
-      --danger: #ff4444;
-      --warning: #ffaa00;
-      --success: #ff6b35;
-      --overlay: rgba(26,10,0,0.8);
-      --glass: rgba(42,20,5,0.85);
+      --bg-0: #0f0800;
+      --bg-1: #1a1000;
+      --bg-2: #261800;
+      --bg-card: rgba(255,107,0,0.06);
+      --accent: #FF6B00;
+      --accent-2: #FF9500;
+      --accent-dim: rgba(255,107,0,0.12);
+      --accent-glow: 0 0 30px rgba(255,107,0,0.25);
+      --gradient-accent: linear-gradient(135deg, #FF6B00 0%, #FF9500 100%);
+      --text-0: #ffffff;
+      --text-1: #ffe0cc;
+      --text-2: #997755;
+      --text-3: #664433;
+      --border: rgba(255,107,0,0.1);
+      --bg-primary: var(--bg-0);
+      --bg-secondary: var(--bg-1);
+      --bg-tertiary: var(--bg-2);
+      --text-primary: var(--text-0);
+      --text-secondary: var(--text-2);
+      --text-muted: var(--text-3);
     }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg-primary);
-      color: var(--text-primary);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-0);
+      color: var(--text-0);
       overflow: hidden;
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
+      letter-spacing: -0.01em;
     }
-    #root { height: 100vh; height: 100dvh; }
-    ::-webkit-scrollbar { width: 0; height: 0; }
-    .fade-in { animation: fadeIn 0.3s ease; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-    .slide-up { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-    .pulse-glow { animation: pulseGlow 2s ease-in-out infinite; }
-    @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 0 0 var(--accent-dim); } 50% { box-shadow: 0 0 20px 4px var(--accent-dim); } }
-    .shimmer { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
-    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+    #root {
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    /* Scrollbar hidden */
+    ::-webkit-scrollbar { display: none; }
+    * { scrollbar-width: none; }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.92); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+    @keyframes slideDown {
+      from { transform: translateY(-100%); opacity: 0; }
+      to   { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes shimmer {
+      from { background-position: -200% 0; }
+      to   { background-position: 200% 0; }
+    }
+    @keyframes pulseAccent {
+      0%, 100% { box-shadow: 0 0 0 0 var(--accent-dim); }
+      50%       { box-shadow: 0 0 0 8px transparent; }
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    @keyframes logoPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50%       { transform: scale(1.05); opacity: 0.85; }
+    }
+    @keyframes progressFill {
+      from { width: 0%; }
+      to   { width: 100%; }
+    }
+    @keyframes textReveal {
+      from { opacity: 0; transform: translateY(8px) skewY(1deg); }
+      to   { opacity: 1; transform: translateY(0) skewY(0deg); }
+    }
+
+    .fade-up   { animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    .fade-in   { animation: fadeIn 0.3s ease both; }
+    .scale-in  { animation: scaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+    .slide-up  { animation: slideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+    /* Skeleton loader */
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-2) 25%, var(--bg-3) 50%, var(--bg-2) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: var(--radius-sm);
+    }
+
+    /* Glass card */
+    .glass {
+      background: var(--gradient-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+    }
+
+    /* Tap feedback */
+    .tappable {
+      cursor: pointer;
+      transition: transform 0.12s ease, opacity 0.12s ease;
+    }
+    .tappable:active { transform: scale(0.96); opacity: 0.85; }
+
+    /* ── Typography scale ── */
+    .t-display { font-size: clamp(32px, 8vw, 56px); font-weight: 900; letter-spacing: -0.04em; line-height: 1.0; }
+    .t-h1      { font-size: 28px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; }
+    .t-h2      { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+    .t-h3      { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.3; }
+    .t-body    { font-size: 15px; font-weight: 400; line-height: 1.6; }
+    .t-caption { font-size: 12px; font-weight: 500; letter-spacing: 0.02em; line-height: 1.4; }
+    .t-label   { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+
+    /* ── Accent gradient text ── */
+    .text-accent {
+      background: var(--gradient-accent);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Accent outline button */
+    .btn-ghost {
+      background: transparent;
+      border: 1.5px solid var(--border-strong);
+      color: var(--text-1);
+      border-radius: var(--radius-full);
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Primary accent button */
+    .btn-primary {
+      background: var(--gradient-accent);
+      border: none;
+      color: #000;
+      border-radius: var(--radius-full);
+      padding: 16px 32px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+      font-family: inherit;
+      letter-spacing: -0.01em;
+    }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-primary:hover  { box-shadow: var(--accent-glow); }
   </style>
+
   <script>
-    window.BodyBilderTheme = {
+    // Theme init — must run before React mounts
+    window.BVTheme = {
       current: localStorage.getItem('bv-theme') || 'dark',
-      set: function(t) { this.current = t; document.documentElement.setAttribute('data-theme', t); localStorage.setItem('bv-theme', t); },
-      get: function() { return this.current; },
-      toggle: function() { const themes = ['dark','light','cyber','sunset']; const i = themes.indexOf(this.current); this.set(themes[(i+1)%themes.length]); }
+      set: function(t) {
+        this.current = t;
+        document.documentElement.setAttribute('data-theme', t);
+        localStorage.setItem('bv-theme', t);
+      },
+      get: function() { return this.current; }
     };
-    window.BodyBilderTheme.set(window.BodyBilderTheme.current);
+    window.BVTheme.set(window.BVTheme.current);
+
+    // Legacy alias
+    window.BodyBilderTheme = window.BVTheme;
   </script>
 </head>
 <body>
