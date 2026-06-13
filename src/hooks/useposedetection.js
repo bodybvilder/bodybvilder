@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
+// ── MediaPipe landmark indices ───────────────────────────────────────────
+// Left:  shoulder=11, elbow=13, wrist=15, hip=23, knee=25, ankle=27
+// Right: shoulder=12, elbow=14, wrist=16, hip=24, knee=26, ankle=28
+
 const POSE_CONNECTIONS = [
   [0,1],[1,2],[2,3],[3,7],[0,4],[4,5],[5,6],[6,8],
   [9,10],[11,12],[11,13],[13,15],[15,17],[15,19],[15,21],
@@ -8,17 +12,81 @@ const POSE_CONNECTIONS = [
   [29,31],[24,26],[26,28],[28,30],[28,32],[30,32]
 ];
 
+// ── Thresholds ─────────────────────────────────────────────────────────
+// MediaPipe internal threshold = 0.5, tapi kita pakai 0.4 untuk lebih toleran
+// tapi tetap filter noise yang jelas-jelas invisible
+const VIS_THRESHOLD = 0.4;
+
+// ── Exercise categories ──────────────────────────────────────────────────
+const ONE_ARM_EXERCISES = [
+  'bicep-curl', 'hammer-curl', 'concentration-curl', 
+  'lateral-raise', 'front-raise', 'tricep-extension'
+];
+
+const PUSH_UP_EXERCISES = [
+  'pushup', 'incline-pushup', 'decline-pushup', 
+  'diamond-pushup', 'wide-pushup', 'pike-pushup'
+];
+
+const PULL_EXERCISES = [
+  'pullup', 'chinup', 'bodyweight-row'
+];
+
+const LEG_EXERCISES = [
+  'squat', 'lunge', 'glute-bridge', 'single-leg-squat', 
+  'jump-squat', 'calf-raise'
+];
+
+const TIMED_EXERCISES = [
+  'plank', 'hollow-body', 'dead-hang', 'superman'
+];
+
+// ── Threshold maps per exercise type ─────────────────────────────────────
+const THRESHOLDS = {
+  curl: {
+    peak: 55,      // fully contracted (was 45)
+    half: 100,     // partially contracted
+    extended: 130, // arm straight (was 140)
+    elbowStable: 0.12
+  },
+  lateralRaise: {
+    parallel: 0.12,  // arm parallel to floor (was 0.15)
+    half: 0.05,
+    atRest: -0.02
+  },
+  pushup: {
+    bottom: 95,   // elbow angle at bottom (was 90)
+    top: 155,     // elbow angle at top
+    bodyStraight: 20 // tolerance from 180°
+  },
+  squat: {
+    deep: 95,     // knee angle (was 90)
+    half: 125,
+    standing: 155,
+    torsoUpright: 55,
+    kneeDrift: 0.18
+  },
+  plank: {
+    bodyStraight: 12,  // tolerance from 180°
+    hipSag: 0.04
+  }
+};
+
 export function usePoseDetection(videoRef, canvasRef, enabled) {
   const [isReady, setIsReady] = useState(false);
   const [score, setScore] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [repCount, setRepCount] = useState(0);
+  const [activeSide, setActiveSide] = useState('left');
+
   const poseRef = useRef(null);
   const cameraRef = useRef(null);
   const repStateRef = useRef({ phase: 'ready', count: 0, lastTime: 0 });
   const scoreHistoryRef = useRef([]);
   const isActiveRef = useRef(true);
+  const activeSideRef = useRef('left');
 
+  // ── Angle between 3 landmarks (degrees) ────────────────────────────────
   const calculateAngle = useCallback((a, b, c) => {
     if (!a || !b || !c) return 0;
     const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
@@ -26,449 +94,727 @@ export function usePoseDetection(videoRef, canvasRef, enabled) {
     return angle > 180 ? 360 - angle : angle;
   }, []);
 
-  // ── Rep counting helper ────────────────────────────────────────────────────
-  const countRep = useCallback((condition, resetCondition, debounce) => {
+  // ── Visibility check ───────────────────────────────────────────────────
+  const isVisible = useCallback((lm, idx) => {
+    const pt = lm[idx];
+    if (!pt) return false;
+    const vis = pt.visibility !== undefined ? pt.visibility : 1;
+    return vis >= VIS_THRESHOLD;
+  }, []);
+
+  // ── Auto-detect best arm for single-arm exercises ──────────────────────
+  const detectBestArm = useCallback((lm) => {
+    const leftWrist = lm[15];
+    const rightWrist = lm[16];
+    const lv = leftWrist?.visibility ?? 0;
+    const rv = rightWrist?.visibility ?? 0;
+    
+    const current = activeSideRef.current;
+    const currentVis = current === 'left' ? lv : rv;
+    const otherVis = current === 'left' ? rv : lv;
+    
+    // Hysteresis: only switch if other side is significantly more visible
+    if (otherVis > currentVis + 0.25) {
+      const newSide = current === 'left' ? 'right' : 'left';
+      activeSideRef.current = newSide;
+      return newSide;
+    }
+    return current;
+  }, []);
+
+  // ── Get arm landmarks by side ────────────────────────────────────────
+  const getArmLandmarks = useCallback((lm, side) => {
+    if (side === 'left') {
+      return { shoulder: lm[11], elbow: lm[13], wrist: lm[15] };
+    }
+    return { shoulder: lm[12], elbow: lm[14], wrist: lm[16] };
+  }, []);
+
+  // ── Bidirectional rep counter ────────────────────────────────────────
+  // direction: 'push' = start UP → go DOWN → return UP = 1 rep
+  // direction: 'pull' = start DOWN → go UP → return DOWN = 1 rep
+  const repCounter = useCallback((goCondition, returnCondition, debounceMs, direction = 'push') => {
     const now = Date.now();
-    const phase = repStateRef.current.phase;
-    if (condition && phase === 'up' && now - repStateRef.current.lastTime > debounce) {
-      repStateRef.current.phase = 'down';
-    } else if (resetCondition && phase === 'down') {
-      repStateRef.current.phase = 'up';
-      repStateRef.current.count += 1;
-      repStateRef.current.lastTime = now;
-    } else if (phase === 'ready' && resetCondition) {
-      repStateRef.current.phase = 'up';
+    const state = repStateRef.current;
+
+    if (direction === 'push') {
+      if (state.phase === 'ready') {
+        if (returnCondition) state.phase = 'up';
+      } else if (state.phase === 'up') {
+        if (goCondition && now - state.lastTime > debounceMs) {
+          state.phase = 'down';
+        }
+      } else if (state.phase === 'down') {
+        if (returnCondition) {
+          state.phase = 'up';
+          state.count += 1;
+          state.lastTime = now;
+        }
+      }
+    } else {
+      // pull direction
+      if (state.phase === 'ready') {
+        if (returnCondition) state.phase = 'down';
+      } else if (state.phase === 'down') {
+        if (goCondition && now - state.lastTime > debounceMs) {
+          state.phase = 'up';
+        }
+      } else if (state.phase === 'up') {
+        if (returnCondition) {
+          state.phase = 'down';
+          state.count += 1;
+          state.lastTime = now;
+        }
+      }
     }
   }, []);
 
+  // ── Main form analysis ─────────────────────────────────────────────────
   const analyzeForm = useCallback((landmarks, exerciseId) => {
-    if (!landmarks || !landmarks.length) return { score: 0, feedback: 'No pose detected' };
+    // ── GUARD CLAUSE #1: Basic landmark count ──────────────────────────
+    if (!landmarks || landmarks.length < 25) {
+      return { score: 0, feedback: 'Move closer to camera', side: activeSideRef.current };
+    }
 
+    const lm = landmarks;
     let formScore = 0;
     let feedbackText = 'Get in position...';
-    const lm = landmarks;
-    const sl = (idx) => lm[idx] || { x: 0, y: 0, visibility: 0 };
 
-    // ── PUSH-UP GROUP ────────────────────────────────────────────────────────
-    if (['pushup', 'incline-pushup', 'decline-pushup', 'diamond-pushup', 'wide-pushup'].includes(exerciseId)) {
-      const shoulder = sl(11);
-      const hip = sl(23);
-      const ankle = sl(27);
-      const elbow = sl(13);
-      const wrist = sl(15);
-      const bodyAngle = calculateAngle(shoulder, hip, ankle);
-      const elbowAngle = calculateAngle(shoulder, elbow, wrist);
-      const bodyStraight = Math.abs(bodyAngle - 180) < 15;
-      if (bodyStraight && elbowAngle < 90) { formScore = 95; feedbackText = 'Perfect form!'; }
-      else if (bodyStraight && elbowAngle < 120) { formScore = 75; feedbackText = 'Go deeper'; }
-      else if (!bodyStraight) { formScore = 60; feedbackText = 'Keep body straight'; }
-      else { formScore = 50; feedbackText = 'Check form'; }
-      countRep(elbowAngle < 90, elbowAngle > 160, 500);
+    // ── GUARD CLAUSE #2: Core body visibility ─────────────────────────
+    const shouldersVisible = isVisible(lm, 11) && isVisible(lm, 12);
+    const hipsVisible = isVisible(lm, 23) && isVisible(lm, 24);
+    
+    if (!shouldersVisible || !hipsVisible) {
+      return { 
+        score: 0, 
+        feedback: 'Step back — show full body', 
+        side: activeSideRef.current 
+      };
     }
 
-    // ── SQUAT ────────────────────────────────────────────────────────────────
+    // ── GUARD CLAUSE #3: Single-arm exercise arm visibility ────────────
+    if (ONE_ARM_EXERCISES.includes(exerciseId)) {
+      const side = detectBestArm(lm);
+      const armIdx = side === 'left' ? { s: 11, e: 13, w: 15 } : { s: 12, e: 14, w: 16 };
+      const armVisible = isVisible(lm, armIdx.s) && isVisible(lm, armIdx.e) && isVisible(lm, armIdx.w);
+      
+      if (!armVisible) {
+        return { 
+          score: 0, 
+          feedback: `Show your ${side} arm to camera`, 
+          side 
+        };
+      }
+    }
+
+    // ── Safe landmark getters with fallback ───────────────────────────
+    // Only use these AFTER guard clauses pass
+    const ls = lm[11] || { x: 0, y: 0 };
+    const le = lm[13] || { x: 0, y: 0 };
+    const lw = lm[15] || { x: 0, y: 0 };
+    const lh = lm[23] || { x: 0, y: 0 };
+    const lk = lm[25] || { x: 0, y: 0 };
+    const la = lm[27] || { x: 0, y: 0 };
+
+    const rs = lm[12] || { x: 0, y: 0 };
+    const re = lm[14] || { x: 0, y: 0 };
+    const rw = lm[16] || { x: 0, y: 0 };
+    const rh = lm[24] || { x: 0, y: 0 };
+    const rk = lm[26] || { x: 0, y: 0 };
+    const ra = lm[28] || { x: 0, y: 0 };
+
+    // ── SINGLE-ARM EXERCISES ───────────────────────────────────────────
+    if (ONE_ARM_EXERCISES.includes(exerciseId)) {
+      const side = detectBestArm(lm);
+      const { shoulder, elbow, wrist } = getArmLandmarks(lm, side);
+
+      // ── BICEP CURL / HAMMER CURL / CONCENTRATION CURL ──────────────
+      if (['bicep-curl', 'hammer-curl', 'concentration-curl'].includes(exerciseId)) {
+        const curlAngle = calculateAngle(shoulder, elbow, wrist);
+        const elbowDrift = Math.abs(elbow.x - shoulder.x);
+        const elbowStable = elbowDrift < THRESHOLDS.curl.elbowStable;
+
+        const peaked = curlAngle < THRESHOLDS.curl.peak;
+        const halfCurl = curlAngle < THRESHOLDS.curl.half;
+        const extended = curlAngle > THRESHOLDS.curl.extended;
+
+        if (peaked && elbowStable) { 
+          formScore = 95; 
+          feedbackText = 'Peak squeeze!'; 
+        } else if (halfCurl && elbowStable) { 
+          formScore = 80; 
+          feedbackText = 'Curl higher'; 
+        } else if (!elbowStable) { 
+          formScore = 65; 
+          feedbackText = 'Elbow fixed!'; 
+        } else { 
+          formScore = 55; 
+          feedbackText = 'Curl up'; 
+        }
+
+        repCounter(peaked, extended, 600, 'pull');
+        return { score: formScore, feedback: feedbackText, side };
+      }
+
+      // ── LATERAL RAISE / FRONT RAISE ────────────────────────────────
+      if (['lateral-raise', 'front-raise'].includes(exerciseId)) {
+        const armRaised = shoulder.y - wrist.y;
+        const parallel = armRaised > THRESHOLDS.lateralRaise.parallel;
+        const halfRaise = armRaised > THRESHOLDS.lateralRaise.half;
+        const atRest = armRaised < THRESHOLDS.lateralRaise.atRest;
+
+        const elbowStraight = calculateAngle(shoulder, elbow, wrist) > 145;
+
+        if (parallel && elbowStraight) { 
+          formScore = 95; 
+          feedbackText = 'Parallel!'; 
+        } else if (halfRaise) { 
+          formScore = 75; 
+          feedbackText = 'Raise higher'; 
+        } else if (!elbowStraight) { 
+          formScore = 65; 
+          feedbackText = 'Straighten arm'; 
+        } else { 
+          formScore = 55; 
+          feedbackText = 'Raise your arm'; 
+        }
+
+        repCounter(parallel, atRest, 700, 'pull');
+        return { score: formScore, feedback: feedbackText, side };
+      }
+
+      // ── TRICEP EXTENSION ───────────────────────────────────────────
+      if (exerciseId === 'tricep-extension') {
+        const elbowAngle = calculateAngle(shoulder, elbow, wrist);
+        const extended = elbowAngle > 155;
+        const contracted = elbowAngle < 65;
+        const elbowUp = Math.abs(elbow.x - shoulder.x) < 0.1;
+
+        if (extended && elbowUp) { 
+          formScore = 95; 
+          feedbackText = 'Full extension!'; 
+        } else if (elbowAngle > 125) { 
+          formScore = 78; 
+          feedbackText = 'Extend fully'; 
+        } else if (!elbowUp) { 
+          formScore = 65; 
+          feedbackText = 'Keep elbow up'; 
+        } else { 
+          formScore = 60; 
+          feedbackText = 'Extend arm'; 
+        }
+
+        repCounter(contracted, extended, 500, 'push');
+        return { score: formScore, feedback: feedbackText, side };
+      }
+    }
+
+    // ── PUSH-UP GROUP ──────────────────────────────────────────────────
+    if (PUSH_UP_EXERCISES.includes(exerciseId)) {
+      const shoulderY = (ls.y + rs.y) / 2;
+      const hipY = (lh.y + rh.y) / 2;
+      const ankleY = (la.y + ra.y) / 2;
+      const elbowAng = calculateAngle(ls, le, lw);
+
+      const bodyAngle = calculateAngle(
+        { x: (ls.x + rs.x) / 2, y: shoulderY },
+        { x: (lh.x + rh.x) / 2, y: hipY },
+        { x: (la.x + ra.x) / 2, y: ankleY }
+      );
+      const bodyStraight = Math.abs(bodyAngle - 180) < THRESHOLDS.pushup.bodyStraight;
+      const atBottom = elbowAng < THRESHOLDS.pushup.bottom;
+      const atTop = elbowAng > THRESHOLDS.pushup.top;
+
+      if (bodyStraight && atBottom) { 
+        formScore = 95; 
+        feedbackText = 'Full depth!'; 
+      } else if (bodyStraight && elbowAng < 120) { 
+        formScore = 78; 
+        feedbackText = 'Go deeper'; 
+      } else if (!bodyStraight) { 
+        formScore = 60; 
+        feedbackText = 'Keep body straight'; 
+      } else { 
+        formScore = 50; 
+        feedbackText = 'Lower down'; 
+      }
+
+      repCounter(atBottom, atTop, 500, 'push');
+    }
+
+    // ── SQUAT ──────────────────────────────────────────────────────────
     else if (exerciseId === 'squat') {
-      const hip = sl(23);
-      const knee = sl(25);
-      const ankle = sl(27);
-      const shoulder = sl(11);
+      const leftKneeVis = lm[25]?.visibility ?? 0;
+      const rightKneeVis = lm[26]?.visibility ?? 0;
+      const useSide = leftKneeVis >= rightKneeVis ? 'left' : 'right';
+
+      const hip = useSide === 'left' ? lh : rh;
+      const knee = useSide === 'left' ? lk : rk;
+      const ankle = useSide === 'left' ? la : ra;
+      const shoulder = useSide === 'left' ? ls : rs;
+
       const kneeAngle = calculateAngle(hip, knee, ankle);
-      const torsoAngle = calculateAngle(shoulder, hip, knee);
-      const kneeForward = Math.abs(knee.x - ankle.x);
-      if (kneeAngle < 90 && torsoAngle > 60 && kneeForward < 0.15) { formScore = 95; feedbackText = 'Deep squat!'; }
-      else if (kneeAngle < 120 && torsoAngle > 60) { formScore = 80; feedbackText = 'Go deeper'; }
-      else if (torsoAngle <= 60) { formScore = 65; feedbackText = 'Chest up'; }
-      else if (kneeForward >= 0.15) { formScore = 70; feedbackText = 'Knees over toes'; }
-      else { formScore = 60; feedbackText = 'Keep form'; }
-      countRep(kneeAngle < 90, kneeAngle > 160, 600);
+      const torsoUpright = calculateAngle(shoulder, hip, knee) > THRESHOLDS.squat.torsoUpright;
+      const kneeDrift = Math.abs(knee.x - ankle.x);
+
+      const deepSquat = kneeAngle < THRESHOLDS.squat.deep;
+      const halfSquat = kneeAngle < THRESHOLDS.squat.half;
+      const standing = kneeAngle > THRESHOLDS.squat.standing;
+
+      if (deepSquat && torsoUpright) { 
+        formScore = 95; 
+        feedbackText = 'Deep squat!'; 
+      } else if (halfSquat && torsoUpright) { 
+        formScore = 80; 
+        feedbackText = 'Go deeper'; 
+      } else if (!torsoUpright) { 
+        formScore = 65; 
+        feedbackText = 'Chest up'; 
+      } else if (kneeDrift > THRESHOLDS.squat.kneeDrift) { 
+        formScore = 70; 
+        feedbackText = 'Knees out'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Keep form'; 
+      }
+
+      repCounter(deepSquat, standing, 600, 'push');
     }
 
-    // ── BICEP CURL / HAMMER / CONCENTRATION ─────────────────────────────────
-    else if (['bicep-curl', 'hammer-curl', 'concentration-curl'].includes(exerciseId)) {
-      const shoulder = sl(11);
-      const elbow = sl(13);
-      const wrist = sl(15);
-      const curlAngle = calculateAngle(shoulder, elbow, wrist);
-      const elbowHeight = Math.abs(elbow.y - shoulder.y);
-      const elbowStable = elbowHeight < 0.1;
-      if (curlAngle < 45 && elbowStable) { formScore = 95; feedbackText = 'Peak contraction!'; }
-      else if (curlAngle < 90 && elbowStable) { formScore = 80; feedbackText = 'Squeeze bicep'; }
-      else if (!elbowStable) { formScore = 65; feedbackText = 'Keep elbow still'; }
-      else { formScore = 55; feedbackText = 'Curl higher'; }
-      // inverted: down = arm extended, up = arm curled
+    // ── PIKE PUSH-UP ───────────────────────────────────────────────────
+    else if (exerciseId === 'pike-pushup') {
+      const elbowAngle = calculateAngle(ls, le, lw);
+      const hipsUp = lh.y < ls.y - 0.08;
+      const atBottom = elbowAngle < THRESHOLDS.pushup.bottom;
+      const atTop = elbowAngle > THRESHOLDS.pushup.top;
+
+      if (hipsUp && atBottom) { 
+        formScore = 95; 
+        feedbackText = 'Perfect pike!'; 
+      } else if (hipsUp && elbowAngle < 120) { 
+        formScore = 78; 
+        feedbackText = 'Lower more'; 
+      } else if (!hipsUp) { 
+        formScore = 60; 
+        feedbackText = 'Hips up high'; 
+      } else { 
+        formScore = 55; 
+        feedbackText = 'Check position'; 
+      }
+
+      repCounter(atBottom, atTop, 500, 'push');
+    }
+
+    // ── DIPS ───────────────────────────────────────────────────────────
+    else if (['dip', 'bench-dip'].includes(exerciseId)) {
+      const elbowAngle = calculateAngle(ls, le, lw);
+      const atBottom = elbowAngle < 100;
+      const atTop = elbowAngle > 155;
+      const depth = le.y - ls.y;
+
+      if (depth > 0.04 && atBottom) { 
+        formScore = 95; 
+        feedbackText = 'Full depth!'; 
+      } else if (elbowAngle < 115) { 
+        formScore = 78; 
+        feedbackText = 'Go deeper'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Lower more'; 
+      }
+
+      repCounter(atBottom, atTop, 500, 'push');
+    }
+
+    // ── PULL-UP / CHIN-UP ──────────────────────────────────────────────
+    else if (PULL_EXERCISES.includes(exerciseId)) {
+      const elbowAngle = calculateAngle(ls, le, lw);
+      const nose = lm[0] || { y: 1 };
+      const chinAbove = nose.y < (lw.y - 0.05);
+      const atTop = elbowAngle < 75;
+      const atHang = elbowAngle > 155;
+
+      if (chinAbove && atTop) { 
+        formScore = 95; 
+        feedbackText = 'Chin over bar!'; 
+      } else if (elbowAngle < 100) { 
+        formScore = 80; 
+        feedbackText = 'Almost!'; 
+      } else if (atHang) { 
+        formScore = 70; 
+        feedbackText = 'Pull up!'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Full hang first'; 
+      }
+
+      repCounter(atTop, atHang, 700, 'pull');
+    }
+
+    // ── BODYWEIGHT ROW ─────────────────────────────────────────────────
+    else if (exerciseId === 'bodyweight-row') {
+      const elbowAngle = calculateAngle(ls, le, lw);
+      const pulled = elbowAngle < 95;
+      const extended = elbowAngle > 155;
+
+      if (pulled) { 
+        formScore = 95; 
+        feedbackText = 'Chest to bar!'; 
+      } else if (elbowAngle < 120) { 
+        formScore = 78; 
+        feedbackText = 'Pull higher'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Keep body level'; 
+      }
+
+      repCounter(pulled, extended, 500, 'pull');
+    }
+
+    // ── LUNGE ────────────────────────────────────────────────────────────
+    else if (exerciseId === 'lunge') {
+      const leftKneeVis = lm[25]?.visibility ?? 0;
+      const rightKneeVis = lm[26]?.visibility ?? 0;
+      const useSide = leftKneeVis >= rightKneeVis ? 'left' : 'right';
+
+      const hip = useSide === 'left' ? lh : rh;
+      const knee = useSide === 'left' ? lk : rk;
+      const ankle = useSide === 'left' ? la : ra;
+      const shoulder = useSide === 'left' ? ls : rs;
+
+      const kneeAngle = calculateAngle(hip, knee, ankle);
+      const upright = calculateAngle(shoulder, hip, knee) > 65;
+      const atBottom = kneeAngle < 105;
+      const standing = kneeAngle > 155;
+
+      if (atBottom && upright) { 
+        formScore = 95; 
+        feedbackText = 'Deep lunge!'; 
+      } else if (kneeAngle < 125) { 
+        formScore = 80; 
+        feedbackText = 'Go lower'; 
+      } else if (!upright) { 
+        formScore = 65; 
+        feedbackText = 'Torso upright'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Step deeper'; 
+      }
+
+      repCounter(atBottom, standing, 600, 'push');
+    }
+
+    // ── GLUTE BRIDGE ───────────────────────────────────────────────────
+    else if (exerciseId === 'glute-bridge') {
+      const hipAngle = calculateAngle(ls, lh, lk);
+      const hipHeight = ls.y - lh.y;
+      const bridgeUp = hipHeight > 0.06 && hipAngle > 145;
+      const atFloor = hipHeight < 0.01;
+
+      if (bridgeUp) { 
+        formScore = 95; 
+        feedbackText = 'Squeeze glutes!'; 
+      } else if (hipHeight > 0.02) { 
+        formScore = 78; 
+        feedbackText = 'Hips higher'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Drive hips up'; 
+      }
+
+      repCounter(bridgeUp, atFloor, 500, 'pull');
+    }
+
+    // ── PLANK ──────────────────────────────────────────────────────────
+    else if (exerciseId === 'plank') {
+      const midShoulder = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 };
+      const midHip = { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 };
+      const midAnkle = { x: (la.x + ra.x) / 2, y: (la.y + ra.y) / 2 };
+      const bodyAngle = calculateAngle(midShoulder, midHip, midAnkle);
+      const straight = Math.abs(bodyAngle - 180) < THRESHOLDS.plank.bodyStraight;
+      const hipSag = Math.abs(midHip.y - (midShoulder.y + midAnkle.y) / 2);
+
+      if (straight && hipSag < THRESHOLDS.plank.hipSag) { 
+        formScore = 95; 
+        feedbackText = 'Iron plank!'; 
+      } else if (straight) { 
+        formScore = 78; 
+        feedbackText = 'Hips level'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Straighten body'; 
+      }
+      // Timed — no rep count
+    }
+
+    // ── HOLLOW BODY ────────────────────────────────────────────────────
+    else if (exerciseId === 'hollow-body') {
+      const shoulderLift = lh.y - ls.y;
+      const backFlat = Math.abs(lh.y - (ls.y + la.y) / 2) < 0.07;
+
+      if (shoulderLift > 0.05 && backFlat) { 
+        formScore = 95; 
+        feedbackText = 'Solid hollow!'; 
+      } else if (shoulderLift > 0.02) { 
+        formScore = 75; 
+        feedbackText = 'Back flat'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Lift + tighten'; 
+      }
+    }
+
+    // ── DEAD HANG ──────────────────────────────────────────────────────
+    else if (exerciseId === 'dead-hang') {
+      const elbowAngle = calculateAngle(ls, le, lw);
+      const shoulders = ls.y < lw.y - 0.08;
+
+      if (elbowAngle > 158 && shoulders) { 
+        formScore = 95; 
+        feedbackText = 'Perfect hang!'; 
+      } else if (elbowAngle > 140) { 
+        formScore = 80; 
+        feedbackText = 'Shoulders down'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Extend arms'; 
+      }
+    }
+
+    // ── SUPERMAN ───────────────────────────────────────────────────────
+    else if (exerciseId === 'superman') {
+      const liftHeight = lh.y - ls.y;
+      const lifted = liftHeight > 0.08;
+      const atFloor = liftHeight < 0.01;
+
+      if (lifted) { 
+        formScore = 95; 
+        feedbackText = 'Hold it!'; 
+      } else if (liftHeight > 0.03) { 
+        formScore = 78; 
+        feedbackText = 'Higher!'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Lift chest + legs'; 
+      }
+
+      repCounter(lifted, atFloor, 800, 'pull');
+    }
+
+    // ── CRUNCH ───────────────────────────────────────────────────────────
+    else if (exerciseId === 'crunch') {
+      const crunch = lh.y - ls.y;
+      const peaked = crunch > 0.10;
+      const flat = crunch < 0.02;
+
+      if (peaked) { 
+        formScore = 95; 
+        feedbackText = 'Squeeze!'; 
+      } else if (crunch > 0.05) { 
+        formScore = 78; 
+        feedbackText = 'Crunch up'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Lift shoulders'; 
+      }
+
+      repCounter(peaked, flat, 400, 'pull');
+    }
+
+    // ── LEG RAISE ──────────────────────────────────────────────────────
+    else if (exerciseId === 'leg-raise') {
+      const legsUp = (lh.y + rh.y) / 2 - (la.y + ra.y) / 2;
+      const raised = legsUp > 0.18;
+      const lowered = legsUp < 0.01;
+
+      if (raised) { 
+        formScore = 95; 
+        feedbackText = 'Legs up!'; 
+      } else if (legsUp > 0.08) { 
+        formScore = 78; 
+        feedbackText = 'Higher'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Raise legs'; 
+      }
+
+      repCounter(raised, lowered, 500, 'pull');
+    }
+
+    // ── MOUNTAIN CLIMBER ───────────────────────────────────────────────
+    else if (exerciseId === 'mountain-climber') {
+      const midShoulderX = (ls.x + rs.x) / 2;
+      const leftDrive = midShoulderX - lk.x > 0.08;
+      const rightDrive = midShoulderX - rk.x > 0.08;
+      const hipLevel = Math.abs((lh.y + rh.y) / 2 - (ls.y + rs.y) / 2 - 0.12) < 0.1;
+      const driving = leftDrive || rightDrive;
+
+      if (driving && hipLevel) { 
+        formScore = 95; 
+        feedbackText = 'Drive!'; 
+      } else if (hipLevel) { 
+        formScore = 78; 
+        feedbackText = 'Knees to chest'; 
+      } else { 
+        formScore = 65; 
+        feedbackText = 'Hips level'; 
+      }
+
       const now = Date.now();
-      if (curlAngle < 45 && repStateRef.current.phase === 'down' && now - repStateRef.current.lastTime > 500) {
-        repStateRef.current.phase = 'up';
-      } else if (curlAngle > 140 && repStateRef.current.phase === 'up') {
-        repStateRef.current.phase = 'down';
+      if (driving && now - repStateRef.current.lastTime > 350) {
         repStateRef.current.count += 1;
         repStateRef.current.lastTime = now;
-      } else if (repStateRef.current.phase === 'ready' && curlAngle > 140) {
-        repStateRef.current.phase = 'down';
       }
     }
 
-    // ── LATERAL RAISE / FRONT RAISE ──────────────────────────────────────────
-    else if (['lateral-raise', 'front-raise'].includes(exerciseId)) {
-      const shoulder = sl(11);
-      const elbow = sl(13);
-      const wrist = sl(15);
-      const armHeight = shoulder.y - wrist.y;
-      const armStraight = calculateAngle(shoulder, elbow, wrist) > 150;
-      if (armHeight > 0.15 && armStraight) { formScore = 95; feedbackText = 'Perfect raise!'; }
-      else if (armHeight > 0.08 && armStraight) { formScore = 80; feedbackText = 'Raise higher'; }
-      else if (!armStraight) { formScore = 70; feedbackText = 'Keep arm straight'; }
-      else { formScore = 60; feedbackText = 'Control movement'; }
-      const now2 = Date.now();
-      if (armHeight > 0.15 && repStateRef.current.phase === 'down' && now2 - repStateRef.current.lastTime > 600) {
-        repStateRef.current.phase = 'up';
-      } else if (armHeight < 0.02 && repStateRef.current.phase === 'up') {
-        repStateRef.current.phase = 'down';
-        repStateRef.current.count += 1;
-        repStateRef.current.lastTime = now2;
-      } else if (repStateRef.current.phase === 'ready' && armHeight < 0.02) {
-        repStateRef.current.phase = 'down';
+    // ── JUMP SQUAT ─────────────────────────────────────────────────────
+    else if (exerciseId === 'jump-squat') {
+      const kneeAngle = calculateAngle(lh, lk, la);
+      const upright = calculateAngle(ls, lh, lk) > 55;
+      const deepSquat = kneeAngle < THRESHOLDS.squat.deep;
+      const standing = kneeAngle > 158;
+
+      if (deepSquat && upright) { 
+        formScore = 95; 
+        feedbackText = 'Explode!'; 
+      } else if (kneeAngle < 125) { 
+        formScore = 78; 
+        feedbackText = 'Squat deeper'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Squat first'; 
       }
+
+      repCounter(deepSquat, standing, 600, 'push');
     }
 
-    // ── PIKE PUSH-UP ─────────────────────────────────────────────────────────
-    else if (exerciseId === 'pike-pushup') {
-      const shoulder = sl(11);
-      const elbow = sl(13);
-      const wrist = sl(15);
-      const hip = sl(23);
-      const elbowAngle = calculateAngle(shoulder, elbow, wrist);
-      const hipsElevated = hip.y < shoulder.y - 0.1;
-      if (hipsElevated && elbowAngle < 90) { formScore = 95; feedbackText = 'Perfect pike!'; }
-      else if (hipsElevated && elbowAngle < 120) { formScore = 78; feedbackText = 'Lower your head'; }
-      else if (!hipsElevated) { formScore = 60; feedbackText = 'Raise hips higher'; }
-      else { formScore = 55; feedbackText = 'Check form'; }
-      countRep(elbowAngle < 90, elbowAngle > 155, 500);
-    }
+    // ── PISTOL SQUAT ───────────────────────────────────────────────────
+    else if (exerciseId === 'single-leg-squat') {
+      const leftKneeVis = lm[25]?.visibility ?? 0;
+      const rightKneeVis = lm[26]?.visibility ?? 0;
+      const useSide = leftKneeVis >= rightKneeVis ? 'left' : 'right';
 
-    // ── DIPS ─────────────────────────────────────────────────────────────────
-    else if (['dip', 'bench-dip'].includes(exerciseId)) {
-      const shoulder = sl(11);
-      const elbow = sl(13);
-      const wrist = sl(15);
-      const elbowAngle = calculateAngle(shoulder, elbow, wrist);
-      const shoulderBelowElbow = elbow.y - shoulder.y > 0.05;
-      if (shoulderBelowElbow && elbowAngle < 95) { formScore = 95; feedbackText = 'Full depth!'; }
-      else if (elbowAngle < 110) { formScore = 78; feedbackText = 'Go deeper'; }
-      else { formScore = 60; feedbackText = 'Lower more'; }
-      countRep(elbowAngle < 95, elbowAngle > 155, 500);
-    }
+      const hip = useSide === 'left' ? lh : rh;
+      const knee = useSide === 'left' ? lk : rk;
+      const ankle = useSide === 'left' ? la : ra;
+      const shoulder = useSide === 'left' ? ls : rs;
 
-    // ── PULL-UP / CHIN-UP ────────────────────────────────────────────────────
-    else if (['pullup', 'chinup'].includes(exerciseId)) {
-      const shoulder = sl(11);
-      const elbow = sl(13);
-      const wrist = sl(15);
-      const elbowAngle = calculateAngle(shoulder, elbow, wrist);
-      const chinAboveBar = sl(0).y < wrist.y;
-      if (chinAboveBar && elbowAngle < 60) { formScore = 95; feedbackText = 'Chin over bar!'; }
-      else if (elbowAngle < 90) { formScore = 80; feedbackText = 'Almost there!'; }
-      else if (elbowAngle > 160) { formScore = 70; feedbackText = 'Pull up!'; }
-      else { formScore = 60; feedbackText = 'Full hang first'; }
-      const now3 = Date.now();
-      if (elbowAngle < 70 && repStateRef.current.phase === 'down' && now3 - repStateRef.current.lastTime > 600) {
-        repStateRef.current.phase = 'up';
-      } else if (elbowAngle > 155 && repStateRef.current.phase === 'up') {
-        repStateRef.current.phase = 'down';
-        repStateRef.current.count += 1;
-        repStateRef.current.lastTime = now3;
-      } else if (repStateRef.current.phase === 'ready' && elbowAngle > 155) {
-        repStateRef.current.phase = 'down';
-      }
-    }
-
-    // ── BODYWEIGHT ROW ───────────────────────────────────────────────────────
-    else if (exerciseId === 'bodyweight-row') {
-      const shoulder = sl(11);
-      const elbow = sl(13);
-      const wrist = sl(15);
-      const elbowAngle = calculateAngle(shoulder, elbow, wrist);
-      const pulled = shoulder.y - wrist.y > 0.05 && elbowAngle < 90;
-      if (pulled) { formScore = 95; feedbackText = 'Chest to bar!'; }
-      else if (elbowAngle < 120) { formScore = 78; feedbackText = 'Pull higher'; }
-      else { formScore = 60; feedbackText = 'Keep body straight'; }
-      const now4 = Date.now();
-      if (elbowAngle < 90 && repStateRef.current.phase === 'down' && now4 - repStateRef.current.lastTime > 500) {
-        repStateRef.current.phase = 'up';
-      } else if (elbowAngle > 155 && repStateRef.current.phase === 'up') {
-        repStateRef.current.phase = 'down';
-        repStateRef.current.count += 1;
-        repStateRef.current.lastTime = now4;
-      } else if (repStateRef.current.phase === 'ready' && elbowAngle > 155) {
-        repStateRef.current.phase = 'down';
-      }
-    }
-
-    // ── LUNGE ────────────────────────────────────────────────────────────────
-    else if (exerciseId === 'lunge') {
-      const hip = sl(23);
-      const knee = sl(25);
-      const ankle = sl(27);
-      const shoulder = sl(11);
       const kneeAngle = calculateAngle(hip, knee, ankle);
-      const upright = calculateAngle(shoulder, hip, knee) > 70;
-      if (kneeAngle < 100 && upright) { formScore = 95; feedbackText = 'Deep lunge!'; }
-      else if (kneeAngle < 120 && upright) { formScore = 80; feedbackText = 'Go lower'; }
-      else if (!upright) { formScore = 65; feedbackText = 'Keep torso upright'; }
-      else { formScore = 60; feedbackText = 'Deeper lunge'; }
-      countRep(kneeAngle < 100, kneeAngle > 155, 600);
+      const balanced = Math.abs(shoulder.x - hip.x) < 0.14;
+      const atBottom = kneeAngle < 105;
+      const standing = kneeAngle > 158;
+
+      if (atBottom && balanced) { 
+        formScore = 95; 
+        feedbackText = 'Pistol!'; 
+      } else if (kneeAngle < 130) { 
+        formScore = 78; 
+        feedbackText = 'Go lower'; 
+      } else if (!balanced) { 
+        formScore = 65; 
+        feedbackText = 'Balance!'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Control down'; 
+      }
+
+      repCounter(atBottom, standing, 800, 'push');
     }
 
-    // ── GLUTE BRIDGE ─────────────────────────────────────────────────────────
-    else if (exerciseId === 'glute-bridge') {
-      const shoulder = sl(11);
-      const hip = sl(23);
-      const knee = sl(25);
-      const hipAngle = calculateAngle(shoulder, hip, knee);
-      const hipHeight = shoulder.y - hip.y;
-      const goodBridge = hipHeight > 0.08 && hipAngle > 150;
-      if (goodBridge) { formScore = 95; feedbackText = 'Squeeze glutes!'; }
-      else if (hipHeight > 0.03) { formScore = 78; feedbackText = 'Hips higher'; }
-      else { formScore = 60; feedbackText = 'Drive hips up'; }
-      const now5 = Date.now();
-      if (goodBridge && repStateRef.current.phase === 'down' && now5 - repStateRef.current.lastTime > 500) {
-        repStateRef.current.phase = 'up';
-      } else if (hipHeight < 0.01 && repStateRef.current.phase === 'up') {
-        repStateRef.current.phase = 'down';
+    // ── CALF RAISE ─────────────────────────────────────────────────────
+    else if (exerciseId === 'calf-raise') {
+      const knee = lm[25] || { x: 0, y: 0 };
+      const ankle = lm[27] || { x: 0, y: 0 };
+      const foot = lm[31] || { x: 0, y: 0 };
+      const angle = calculateAngle(knee, ankle, foot);
+      const raised = angle < 82;
+      const flat = angle > 100;
+
+      if (raised) { 
+        formScore = 95; 
+        feedbackText = 'Full rise!'; 
+      } else if (angle < 95) { 
+        formScore = 78; 
+        feedbackText = 'Rise higher'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Up on toes'; 
+      }
+
+      repCounter(raised, flat, 400, 'pull');
+    }
+
+    // ── SHOULDER TAP ───────────────────────────────────────────────────
+    else if (exerciseId === 'shoulder-tap') {
+      const hipMid = { x: (lh.x + rh.x) / 2, y: (lh.y + rh.y) / 2 };
+      const shMid = { x: (ls.x + rs.x) / 2, y: (ls.y + rs.y) / 2 };
+      const hipSway = Math.abs(hipMid.x - shMid.x);
+      const leftTap = Math.abs(lw.x - rs.x) < 0.1;
+      const rightTap = Math.abs(rw.x - ls.x) < 0.1;
+      const tapping = leftTap || rightTap;
+
+      if (tapping && hipSway < 0.1) { 
+        formScore = 95; 
+        feedbackText = 'Stable!'; 
+      } else if (tapping) { 
+        formScore = 75; 
+        feedbackText = 'Hips still'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Tap shoulder'; 
+      }
+
+      const now = Date.now();
+      if (tapping && now - repStateRef.current.lastTime > 450) {
         repStateRef.current.count += 1;
-        repStateRef.current.lastTime = now5;
-      } else if (repStateRef.current.phase === 'ready' && hipHeight < 0.01) {
-        repStateRef.current.phase = 'down';
+        repStateRef.current.lastTime = now;
       }
     }
 
-    // ── PLANK ────────────────────────────────────────────────────────────────
-    else if (exerciseId === 'plank') {
-      const shoulder = sl(11);
-      const hip = sl(23);
-      const ankle = sl(27);
-      const bodyAngle = calculateAngle(shoulder, hip, ankle);
-      const hipSag = Math.abs(hip.y - (shoulder.y + ankle.y) / 2);
-      const straight = Math.abs(bodyAngle - 180) < 10;
-      if (straight && hipSag < 0.05) { formScore = 95; feedbackText = 'Solid plank!'; }
-      else if (straight) { formScore = 80; feedbackText = 'Hips sagging'; }
-      else { formScore = 65; feedbackText = 'Straighten body'; }
-    }
-
-    // ── HOLLOW BODY ──────────────────────────────────────────────────────────
-    else if (exerciseId === 'hollow-body') {
-      const shoulder = sl(11);
-      const hip = sl(23);
-      const ankle = sl(27);
-      const backContact = Math.abs(hip.y - (shoulder.y + ankle.y) / 2);
-      const shoulderLift = hip.y - shoulder.y;
-      if (shoulderLift > 0.05 && backContact < 0.08) { formScore = 95; feedbackText = 'Solid hollow!'; }
-      else if (shoulderLift > 0.02) { formScore = 75; feedbackText = 'Lower back to floor'; }
-      else { formScore = 60; feedbackText = 'Lift shoulders & legs'; }
-    }
-
-    // ── DEAD HANG ────────────────────────────────────────────────────────────
-    else if (exerciseId === 'dead-hang') {
-      const shoulder = sl(11);
-      const elbow = sl(13);
-      const wrist = sl(15);
-      const elbowAngle = calculateAngle(shoulder, elbow, wrist);
-      const engaged = shoulder.y < wrist.y - 0.1;
-      if (elbowAngle > 155 && engaged) { formScore = 95; feedbackText = 'Perfect hang!'; }
-      else if (elbowAngle > 140) { formScore = 80; feedbackText = 'Engage shoulders'; }
-      else { formScore = 60; feedbackText = 'Straighten arms'; }
-    }
-
-    // ── SUPERMAN ─────────────────────────────────────────────────────────────
-    else if (exerciseId === 'superman') {
-      const shoulder = sl(11);
-      const hip = sl(23);
-      const liftHeight = hip.y - shoulder.y;
-      if (liftHeight > 0.1) { formScore = 95; feedbackText = 'Great extension!'; }
-      else if (liftHeight > 0.05) { formScore = 78; feedbackText = 'Lift higher'; }
-      else { formScore = 60; feedbackText = 'Lift arms and legs'; }
-      countRep(liftHeight > 0.1, liftHeight < 0.02, 800);
-    }
-
-    // ── CRUNCH ───────────────────────────────────────────────────────────────
-    else if (exerciseId === 'crunch') {
-      const shoulder = sl(11);
-      const hip = sl(23);
-      const crunchDepth = hip.y - shoulder.y;
-      if (crunchDepth > 0.12) { formScore = 95; feedbackText = 'Squeeze at top!'; }
-      else if (crunchDepth > 0.06) { formScore = 78; feedbackText = 'Crunch higher'; }
-      else { formScore = 60; feedbackText = 'Lift shoulders'; }
-      const now6 = Date.now();
-      if (crunchDepth > 0.12 && repStateRef.current.phase === 'down' && now6 - repStateRef.current.lastTime > 400) {
-        repStateRef.current.phase = 'up';
-      } else if (crunchDepth < 0.02 && repStateRef.current.phase === 'up') {
-        repStateRef.current.phase = 'down';
-        repStateRef.current.count += 1;
-        repStateRef.current.lastTime = now6;
-      } else if (repStateRef.current.phase === 'ready' && crunchDepth < 0.02) {
-        repStateRef.current.phase = 'down';
-      }
-    }
-
-    // ── LEG RAISE ────────────────────────────────────────────────────────────
-    else if (exerciseId === 'leg-raise') {
-      const hip = sl(23);
-      const ankle = sl(27);
-      const legsUp = hip.y - ankle.y;
-      if (legsUp > 0.2) { formScore = 95; feedbackText = 'Legs vertical!'; }
-      else if (legsUp > 0.1) { formScore = 78; feedbackText = 'Raise legs higher'; }
-      else { formScore = 60; feedbackText = 'Keep legs straight'; }
-      const now7 = Date.now();
-      if (legsUp > 0.2 && repStateRef.current.phase === 'down' && now7 - repStateRef.current.lastTime > 500) {
-        repStateRef.current.phase = 'up';
-      } else if (legsUp < 0.02 && repStateRef.current.phase === 'up') {
-        repStateRef.current.phase = 'down';
-        repStateRef.current.count += 1;
-        repStateRef.current.lastTime = now7;
-      } else if (repStateRef.current.phase === 'ready' && legsUp < 0.02) {
-        repStateRef.current.phase = 'down';
-      }
-    }
-
-    // ── MOUNTAIN CLIMBER ─────────────────────────────────────────────────────
-    else if (exerciseId === 'mountain-climber') {
-      const shoulder = sl(11);
-      const hip = sl(23);
-      const leftKnee = sl(25);
-      const rightKnee = sl(26);
-      const hipLevel = Math.abs(hip.y - (shoulder.y + 0.15)) < 0.08;
-      const kneeForward = Math.min(shoulder.x - leftKnee.x, shoulder.x - rightKnee.x);
-      if (hipLevel && kneeForward > 0.05) { formScore = 95; feedbackText = 'Drive that knee!'; }
-      else if (hipLevel) { formScore = 78; feedbackText = 'Drive knees to chest'; }
-      else { formScore = 65; feedbackText = 'Keep hips level'; }
-      const now8 = Date.now();
-      if (kneeForward > 0.05 && repStateRef.current.phase === 'ready' && now8 - repStateRef.current.lastTime > 300) {
-        repStateRef.current.phase = 'up';
-        repStateRef.current.count += 1;
-        repStateRef.current.lastTime = now8;
-      }
-    }
-
-    // ── TRICEP EXTENSION ─────────────────────────────────────────────────────
-    else if (exerciseId === 'tricep-extension') {
-      const shoulder = sl(11);
-      const elbow = sl(13);
-      const wrist = sl(15);
-      const elbowAngle = calculateAngle(shoulder, elbow, wrist);
-      const elbowUp = Math.abs(elbow.x - shoulder.x) < 0.08;
-      if (elbowAngle > 155 && elbowUp) { formScore = 95; feedbackText = 'Full extension!'; }
-      else if (elbowAngle > 130) { formScore = 78; feedbackText = 'Extend fully'; }
-      else if (!elbowUp) { formScore = 65; feedbackText = 'Keep elbow up'; }
-      else { formScore = 60; feedbackText = 'Lower the weight'; }
-      countRep(elbowAngle < 60, elbowAngle > 155, 500);
-    }
-
-    // ── RUSSIAN TWIST ────────────────────────────────────────────────────────
+    // ── RUSSIAN TWIST ──────────────────────────────────────────────────
     else if (exerciseId === 'russian-twist') {
-      const leftShoulder = sl(11);
-      const rightShoulder = sl(12);
-      const leftWrist = sl(15);
-      const rightWrist = sl(16);
-      const wristMid = (leftWrist.x + rightWrist.x) / 2;
-      const shoulderMid = (leftShoulder.x + rightShoulder.x) / 2;
+      const wristMid = (lw.x + rw.x) / 2;
+      const shoulderMid = (ls.x + rs.x) / 2;
       const rotation = Math.abs(wristMid - shoulderMid);
-      if (rotation > 0.15) { formScore = 95; feedbackText = 'Full rotation!'; }
-      else if (rotation > 0.08) { formScore = 78; feedbackText = 'Rotate more'; }
-      else { formScore = 60; feedbackText = 'Twist side to side'; }
-      const now9 = Date.now();
-      if (rotation > 0.15 && repStateRef.current.phase === 'ready' && now9 - repStateRef.current.lastTime > 400) {
-        repStateRef.current.phase = 'up';
+      const twisted = rotation > 0.12;
+
+      if (twisted) { 
+        formScore = 95; 
+        feedbackText = 'Full twist!'; 
+      } else if (rotation > 0.06) { 
+        formScore = 78; 
+        feedbackText = 'Twist more'; 
+      } else { 
+        formScore = 60; 
+        feedbackText = 'Rotate side to side'; 
+      }
+
+      const now = Date.now();
+      if (twisted && now - repStateRef.current.lastTime > 450) {
         repStateRef.current.count += 1;
-        repStateRef.current.lastTime = now9;
-      } else if (rotation < 0.03) {
+        repStateRef.current.lastTime = now;
         repStateRef.current.phase = 'ready';
       }
     }
 
-    // ── JUMP SQUAT ───────────────────────────────────────────────────────────
-    else if (exerciseId === 'jump-squat') {
-      const hip = sl(23);
-      const knee = sl(25);
-      const ankle = sl(27);
-      const shoulder = sl(11);
-      const kneeAngle = calculateAngle(hip, knee, ankle);
-      const upright = calculateAngle(shoulder, hip, knee) > 60;
-      if (kneeAngle < 90 && upright) { formScore = 95; feedbackText = 'Explode up!'; }
-      else if (kneeAngle < 120) { formScore = 78; feedbackText = 'Squat deeper'; }
-      else { formScore = 60; feedbackText = 'Squat then jump'; }
-      countRep(kneeAngle < 90, kneeAngle > 155, 600);
-    }
-
-    // ── PISTOL SQUAT ─────────────────────────────────────────────────────────
-    else if (exerciseId === 'single-leg-squat') {
-      const hip = sl(23);
-      const knee = sl(25);
-      const ankle = sl(27);
-      const shoulder = sl(11);
-      const kneeAngle = calculateAngle(hip, knee, ankle);
-      const balanced = Math.abs(shoulder.x - hip.x) < 0.12;
-      if (kneeAngle < 100 && balanced) { formScore = 95; feedbackText = 'Pistol depth!'; }
-      else if (kneeAngle < 130) { formScore = 78; feedbackText = 'Go lower'; }
-      else if (!balanced) { formScore = 65; feedbackText = 'Stay balanced'; }
-      else { formScore = 60; feedbackText = 'Control descent'; }
-      countRep(kneeAngle < 100, kneeAngle > 155, 800);
-    }
-
-    // ── CALF RAISE ───────────────────────────────────────────────────────────
-    else if (exerciseId === 'calf-raise') {
-      const knee = sl(25);
-      const ankle = sl(27);
-      const foot = sl(31);
-      const ankleAngle = calculateAngle(knee, ankle, foot);
-      if (ankleAngle < 80) { formScore = 95; feedbackText = 'Full rise!'; }
-      else if (ankleAngle < 100) { formScore = 78; feedbackText = 'Rise higher'; }
-      else { formScore = 60; feedbackText = 'Push up on toes'; }
-      const now10 = Date.now();
-      if (ankleAngle < 80 && repStateRef.current.phase === 'down' && now10 - repStateRef.current.lastTime > 400) {
-        repStateRef.current.phase = 'up';
-      } else if (ankleAngle > 100 && repStateRef.current.phase === 'up') {
-        repStateRef.current.phase = 'down';
-        repStateRef.current.count += 1;
-        repStateRef.current.lastTime = now10;
-      } else if (repStateRef.current.phase === 'ready' && ankleAngle > 100) {
-        repStateRef.current.phase = 'down';
-      }
-    }
-
-    // ── SHOULDER TAP ─────────────────────────────────────────────────────────
-    else if (exerciseId === 'shoulder-tap') {
-      const leftShoulder = sl(11);
-      const rightShoulder = sl(12);
-      const leftWrist = sl(15);
-      const rightWrist = sl(16);
-      const hip = sl(23);
-      const hipSway = Math.abs(hip.x - (leftShoulder.x + rightShoulder.x) / 2);
-      const tapDetect = Math.abs(leftWrist.x - rightShoulder.x) < 0.08 || Math.abs(rightWrist.x - leftShoulder.x) < 0.08;
-      if (tapDetect && hipSway < 0.08) { formScore = 95; feedbackText = 'Stable tap!'; }
-      else if (tapDetect) { formScore = 75; feedbackText = 'Control hip sway'; }
-      else { formScore = 60; feedbackText = 'Tap opposite shoulder'; }
-      const now11 = Date.now();
-      if (tapDetect && now11 - repStateRef.current.lastTime > 400) {
-        repStateRef.current.count += 1;
-        repStateRef.current.lastTime = now11;
-      }
-    }
-
-    // ── DEFAULT (generic posture check) ──────────────────────────────────────
+    // ── DEFAULT FALLBACK ───────────────────────────────────────────────
     else {
-      const leftShoulder = sl(11);
-      const rightShoulder = sl(12);
-      const leftHip = sl(23);
-      const rightHip = sl(24);
-      const shoulderLevel = Math.abs(leftShoulder.y - rightShoulder.y) < 0.05;
-      const hipLevel = Math.abs(leftHip.y - rightHip.y) < 0.05;
-      if (shoulderLevel && hipLevel) { formScore = 85; feedbackText = 'Good posture'; }
-      else { formScore = 70; feedbackText = 'Balance your stance'; }
+      const shLevel = Math.abs(ls.y - rs.y) < 0.06;
+      const hipLevel = Math.abs(lh.y - rh.y) < 0.06;
+      
+      if (shLevel && hipLevel) { 
+        formScore = 85; 
+        feedbackText = 'Good posture'; 
+      } else { 
+        formScore = 70; 
+        feedbackText = 'Stand balanced'; 
+      }
     }
 
-    return { score: formScore, feedback: feedbackText };
-  }, [calculateAngle, countRep]);
+    return { score: formScore, feedback: feedbackText, side: activeSideRef.current };
+  }, [calculateAngle, isVisible, repCounter, detectBestArm, getArmLandmarks]);
 
+  // ── MediaPipe init & cleanup ───────────────────────────────────────────
   useEffect(() => {
     if (!enabled || !videoRef.current) {
       setIsReady(false);
@@ -491,8 +837,8 @@ export function usePoseDetection(videoRef, canvasRef, enabled) {
           modelComplexity: 1,
           smoothLandmarks: true,
           enableSegmentation: false,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5
+          minDetectionConfidence: 0.55,
+          minTrackingConfidence: 0.55
         });
 
         pose.onResults((results) => {
@@ -508,21 +854,26 @@ export function usePoseDetection(videoRef, canvasRef, enabled) {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
           if (results.poseLandmarks) {
+            // ── FIXED: Static radius, no callback ──────────────────────
             drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {
-              color: 'rgba(0,255,136,0.6)',
+              color: 'rgba(200, 255, 0, 0.5)',
               lineWidth: 2
             });
+            
             drawLandmarks(ctx, results.poseLandmarks, {
-              color: '#00FF88',
+              color: 'var(--accent, #C8FF00)',
+              fillColor: 'rgba(200, 255, 0, 0.3)',
               lineWidth: 1,
-              radius: 3
+              radius: 3  // ← STATIC, not callback
             });
 
             const exerciseId = window.currentExerciseId || 'pushup';
             const analysis = analyzeForm(results.poseLandmarks, exerciseId);
 
+            // ── FIXED: 5 frame history for faster response ───────────
             scoreHistoryRef.current.push(analysis.score);
-            if (scoreHistoryRef.current.length > 10) scoreHistoryRef.current.shift();
+            if (scoreHistoryRef.current.length > 5) scoreHistoryRef.current.shift();
+            
             const avgScore = Math.round(
               scoreHistoryRef.current.reduce((a, b) => a + b, 0) / scoreHistoryRef.current.length
             );
@@ -530,6 +881,7 @@ export function usePoseDetection(videoRef, canvasRef, enabled) {
             setScore(avgScore);
             setFeedback(analysis.feedback);
             setRepCount(repStateRef.current.count);
+            if (analysis.side) setActiveSide(analysis.side);
           }
         });
 
@@ -540,9 +892,7 @@ export function usePoseDetection(videoRef, canvasRef, enabled) {
             if (isActiveRef.current && poseRef.current && videoRef.current) {
               try {
                 await poseRef.current.send({ image: videoRef.current });
-              } catch (e) {
-                // silent fail on frame errors
-              }
+              } catch (e) { /* silent frame drop */ }
             }
           },
           width: 640,
@@ -552,9 +902,10 @@ export function usePoseDetection(videoRef, canvasRef, enabled) {
         cameraRef.current = camera;
         await camera.start();
         setIsReady(true);
+
       } catch (err) {
         console.error('Pose init error:', err);
-        setFeedback('Camera error. Check permissions.');
+        setFeedback('Camera error — check permissions');
         setIsReady(false);
       }
     };
@@ -563,22 +914,21 @@ export function usePoseDetection(videoRef, canvasRef, enabled) {
 
     return () => {
       isActiveRef.current = false;
-      if (cameraRef.current) {
-        try { cameraRef.current.stop(); } catch (e) { /* ignore */ }
-      }
-      if (poseRef.current) {
-        try { poseRef.current.close(); } catch (e) { /* ignore */ }
-      }
+      try { cameraRef.current?.stop(); } catch (e) {}
+      try { poseRef.current?.close(); } catch (e) {}
     };
   }, [enabled, videoRef, canvasRef, analyzeForm]);
 
+  // ── Reset function ─────────────────────────────────────────────────────
   const resetRepCount = useCallback(() => {
     repStateRef.current = { phase: 'ready', count: 0, lastTime: 0 };
-    setRepCount(0);
+    activeSideRef.current = 'left';
     scoreHistoryRef.current = [];
+    setRepCount(0);
     setScore(0);
+    setActiveSide('left');
     setFeedback('Get in position...');
   }, []);
 
-  return { isReady, score, feedback, repCount, resetRepCount };
+  return { isReady, score, feedback, repCount, activeSide, resetRepCount };
 }
