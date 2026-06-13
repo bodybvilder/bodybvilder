@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ScoreBadge from '../components/ScoreBadge';
+import ScoreBadge from '../components/scorebadge';
 
 // ── SVG ICONS (NO EMOJI) ─────────────────────────────────────────────────
 const FlameIcon = ({ size = 20, color = 'currentColor' }) => (
