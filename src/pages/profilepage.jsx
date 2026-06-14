@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '../components/themetoggle';
 import { signOutUser } from '../firebase';
+import { usePro } from '../hooks/usepro';
 
 // ── SVG ICONS (NO EMOJI) ─────────────────────────────────────────────────
 const UserIcon = ({ size = 32, color = 'var(--accent)' }) => (
@@ -68,6 +69,7 @@ const DEFAULT_STATS = {
 
 export default function ProfilePage({ user, isGuest }) {
   const navigate = useNavigate();
+  const { isPro, plan } = usePro();
   const [stats, setStats] = useState(DEFAULT_STATS);
   const [notifications, setNotifications] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -300,9 +302,94 @@ export default function ProfilePage({ user, isGuest }) {
       
       {/* Settings */}
       <div style={{ padding: '0 20px' }}>
-        <h3 style={{ 
-          fontSize: '13px', 
-          fontWeight: 700, 
+
+        {/* ── PRO Status Card ── */}
+        {isPro ? (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(200,255,0,0.12) 0%, rgba(57,255,20,0.06) 100%)',
+            border: '1px solid rgba(200,255,0,0.25)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '16px 20px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+          }}>
+            <div style={{
+              width: '40px', height: '40px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'var(--accent-dim)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--accent)">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.01em', marginBottom: '2px' }}>
+                BODYBVILDER PRO
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-2)' }}>
+                {plan === 'yearly' ? 'Yearly plan · Active' : 'Monthly plan · Active'}
+              </div>
+            </div>
+            <div style={{
+              padding: '4px 10px',
+              borderRadius: 'var(--radius-full)',
+              background: 'var(--accent)',
+              fontSize: '10px', fontWeight: 800,
+              color: '#000', letterSpacing: '0.04em',
+            }}>
+              ACTIVE
+            </div>
+          </div>
+        ) : (
+          <div
+            onClick={() => navigate('/pro')}
+            style={{
+              background: 'var(--bg-1)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '16px 20px',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              cursor: 'pointer',
+              transition: 'border-color 0.15s ease',
+            }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(200,255,0,0.3)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+          >
+            <div style={{
+              width: '40px', height: '40px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'var(--accent-dim)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--accent)">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-0)', marginBottom: '2px' }}>
+                Upgrade to PRO
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-2)' }}>
+                Full history, trends, program builder · from $2.50/mo
+              </div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="2" strokeLinecap="round">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </div>
+        )}
+
+        <h3 style={{
+          fontSize: '13px',
+          fontWeight: 700,
           color: 'var(--text-muted)',
           textTransform: 'uppercase',
           letterSpacing: '1px',

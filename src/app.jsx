@@ -5,6 +5,7 @@ import WorkoutPage from './pages/workoutpage';
 import StatsPage from './pages/statspage';
 import ProfilePage from './pages/profilepage';
 import AuthPage from './pages/authpage';
+import ProPage from './pages/propage';
 import BottomNav from './components/bottomnav';
 import SplashScreen from './components/splashscreen';
 import Logo from './components/logo';
@@ -91,6 +92,7 @@ function MainApp({ user, isGuest }) {
           <Route path="/workout" element={<WorkoutPage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/profile" element={<ProfilePage user={user} isGuest={isGuest} />} />
+          <Route path="/pro" element={<ProPage user={user} />} />
         </Routes>
         <div className="app-bottom-nav">
           <BottomNav />

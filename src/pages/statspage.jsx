@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ScoreBadge from '../components/scorebadge';
+import UpgradePrompt from '../components/upgradeprompt';
+import { usePro } from '../hooks/usepro';
 
 // ── SVG ICONS (NO EMOJI) ─────────────────────────────────────────────────
 const FlameIcon = ({ size = 20, color = 'currentColor' }) => (
@@ -62,6 +64,7 @@ const DEFAULT_HISTORY = [];
 
 export default function StatsPage() {
   const navigate = useNavigate();
+  const { isPro, canUse } = usePro();
   const [stats, setStats] = useState(DEFAULT_STATS);
   const [history, setHistory] = useState(DEFAULT_HISTORY);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,7 +90,9 @@ export default function StatsPage() {
       if (savedHistory) {
         const parsed = JSON.parse(savedHistory);
         if (Array.isArray(parsed)) {
-          setHistory(parsed.slice(-10).reverse());
+          // Free: last 3 | PRO: all (up to 50 stored)
+          const limit = canUse('unlimited_history') ? 50 : 3;
+          setHistory(parsed.slice(-limit).reverse());
         }
       }
     } catch (err) {
@@ -307,15 +312,19 @@ export default function StatsPage() {
       
       {/* Recent Activity */}
       <div style={{ padding: '0 20px' }}>
-        <h3 style={{ 
-          fontSize: '14px', 
-          fontWeight: 700, 
-          color: 'var(--text-primary)',
-          marginBottom: '12px'
-        }}>
-          Recent Activity
-        </h3>
-        
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+          <h3 style={{
+            fontSize: '14px',
+            fontWeight: 700,
+            color: 'var(--text-primary)',
+          }}>
+            Recent Activity
+          </h3>
+          {!isPro && history.length > 0 && (
+            <UpgradePrompt feature="Full History" desc="" compact />
+          )}
+        </div>
+
         {history.length === 0 ? (
           <div style={{
             background: 'var(--bg-secondary)',
@@ -324,9 +333,9 @@ export default function StatsPage() {
             textAlign: 'center',
             color: 'var(--text-muted)'
           }}>
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
               marginBottom: '12px',
               opacity: 0.5
             }}>
@@ -338,31 +347,43 @@ export default function StatsPage() {
             </p>
           </div>
         ) : (
-          history.map((item, i) => (
-            <div key={i} style={{
-              background: 'var(--bg-secondary)',
-              borderRadius: '16px',
-              padding: '16px',
-              marginBottom: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-              border: '1px solid rgba(255,255,255,0.03)'
-            }}>
-              <ScoreBadge score={item.score || 0} size="sm" />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  {item.exerciseName || 'Workout'}
+          <>
+            {history.map((item, i) => (
+              <div key={i} style={{
+                background: 'var(--bg-secondary)',
+                borderRadius: '16px',
+                padding: '16px',
+                marginBottom: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '16px',
+                border: '1px solid rgba(255,255,255,0.03)'
+              }}>
+                <ScoreBadge score={item.score || 0} size="sm" />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    {item.exerciseName || 'Workout'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    {item.reps || 0} reps · {Math.floor((item.duration || 0) / 60)}m {(item.duration || 0) % 60}s
+                  </div>
                 </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                  {item.reps || 0} reps • {Math.floor((item.duration || 0) / 60)}m {(item.duration || 0) % 60}s
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                  {item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-'}
                 </div>
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                {item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-'}
+            ))}
+
+            {/* Gate — show upgrade if free user and has more history */}
+            {!isPro && (
+              <div style={{ marginTop: '8px' }}>
+                <UpgradePrompt
+                  feature="Full Workout History"
+                  desc="You're seeing only your last 3 sessions. PRO unlocks everything."
+                />
               </div>
-            </div>
-          ))
+            )}
+          </>
         )}
       </div>
     </div>

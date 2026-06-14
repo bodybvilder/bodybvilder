@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Logo from '../components/logo';
 import StreakBadge from '../components/streakbadge';
 import { exercises, categories, getExercisesByCategory } from '../data/exercises';
+import { usePro } from '../hooks/usepro';
 
 // ── SVG CATEGORY ICONS (NO EMOJI) ──────────────────────────────────────
 const CATEGORY_ICONS = {
@@ -41,6 +42,7 @@ const SearchEmptyIcon = () => (
 );
 
 export default function HomePage({ user, isGuest }) {
+  const { isPro } = usePro();
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [streak, setStreak] = useState(0);
@@ -202,6 +204,9 @@ export default function HomePage({ user, isGuest }) {
         </div>
       </div>
 
+      {/* ── PRO Banner (only for free users, dismissible) ── */}
+      {!isPro && <ProBanner navigate={navigate} />}
+
       {/* ── Category pills ── */}
       <div
         ref={categoryRef}
@@ -284,6 +289,83 @@ export default function HomePage({ user, isGuest }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// ── PRO Banner — subtle, non-blocking, dismissible ──────────────────────
+function ProBanner({ navigate }) {
+  const [dismissed, setDismissed] = useState(() =>
+    localStorage.getItem('bv-pro-banner-dismissed') === 'true'
+  );
+
+  if (dismissed) return null;
+
+  return (
+    <div style={{
+      margin: '0 20px 16px',
+      padding: '14px 16px',
+      borderRadius: 'var(--radius-lg)',
+      background: 'linear-gradient(135deg, rgba(200,255,0,0.08) 0%, rgba(57,255,20,0.04) 100%)',
+      border: '1px solid rgba(200,255,0,0.18)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '12px',
+      animation: 'fadeUp 0.4s 0.12s cubic-bezier(0.16,1,0.3,1) both',
+    }}>
+      {/* Star icon */}
+      <div style={{
+        flexShrink: 0, width: '32px', height: '32px',
+        borderRadius: 'var(--radius-sm)',
+        background: 'var(--accent-dim)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--accent)">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      </div>
+
+      {/* Text */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-0)', marginBottom: '1px' }}>
+          Try PRO free for 7 days
+        </div>
+        <div style={{ fontSize: '11px', color: 'var(--text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          Full history · Program builder · All themes
+        </div>
+      </div>
+
+      {/* CTA */}
+      <button
+        onClick={() => navigate('/pro')}
+        style={{
+          flexShrink: 0, padding: '7px 14px',
+          borderRadius: 'var(--radius-full)',
+          border: 'none',
+          background: 'var(--gradient-accent)',
+          color: '#000', fontSize: '12px', fontWeight: 800,
+          cursor: 'pointer', fontFamily: 'inherit',
+        }}
+      >
+        Try free
+      </button>
+
+      {/* Dismiss */}
+      <button
+        onClick={() => {
+          setDismissed(true);
+          localStorage.setItem('bv-pro-banner-dismissed', 'true');
+        }}
+        style={{
+          flexShrink: 0, background: 'none', border: 'none',
+          cursor: 'pointer', padding: '4px', color: 'var(--text-3)',
+          lineHeight: 1,
+        }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
     </div>
   );
 }
