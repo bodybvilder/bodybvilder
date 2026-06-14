@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { openCheckout, PRICES } from '../payments/lemonsqueezy';
-import Logo from '../components/logo';
+import { openCheckout } from '../payments/lemonsqueezy';
 
 const FEATURE_ROWS = [
   { label: 'AI Form Analysis',         free: true,  pro: true,  core: true },

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Logo from '../components/logo';
 import StreakBadge from '../components/streakbadge';
 import { exercises, categories, getExercisesByCategory } from '../data/exercises';
 import { usePro } from '../hooks/usepro';
