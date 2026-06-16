@@ -283,40 +283,129 @@ export default function WorkoutPage() {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '40px',
-            textAlign: 'center'
+            padding: '0',
           }}>
+            {/* Full bleed pre-start layout */}
             <div style={{
-              width: '120px',
-              height: '120px',
-              borderRadius: '50%',
-              background: 'var(--accent-dim)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '24px'
+              position: 'absolute', inset: 0,
+              display: 'flex', flexDirection: 'column',
+              background: 'var(--bg-0)',
             }}>
-              <CameraIcon size={48} color="var(--accent)" />
-            </div>
-            <h2 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '8px', color: 'var(--text-primary)' }}>
-              {exercise?.name || 'Workout'}
-            </h2>
-            <p style={{ fontSize: '15px', color: 'var(--text-secondary)', maxWidth: '300px', lineHeight: 1.6 }}>
-              {exercise?.description || 'Select an exercise to begin'}
-            </p>
-            <div style={{ marginTop: '24px', display: 'flex', gap: '16px' }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--accent)' }}>
-                  {targetSets}x{exercise?.isTimed ? `${targetReps}s` : targetReps}
-                </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Target</div>
+              {/* Top — back button */}
+              <div style={{ padding: '20px 20px 0', display: 'flex', alignItems: 'center' }}>
+                <button
+                  onClick={() => navigate('/')}
+                  style={{
+                    background: 'var(--bg-1)', border: '1px solid var(--border)',
+                    borderRadius: '12px', padding: '10px',
+                    cursor: 'pointer', color: 'var(--text-0)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                  </svg>
+                </button>
               </div>
-              <div style={{ width: '1px', height: '40px', background: 'rgba(255,255,255,0.05)' }} />
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  {exercise?.difficulty || 'beginner'}
+
+              {/* Middle — exercise info */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '24px 24px 16px', textAlign: 'center' }}>
+                {/* Camera icon */}
+                <div style={{
+                  width: '80px', height: '80px', borderRadius: '50%',
+                  background: 'var(--accent-dim)',
+                  border: '2px solid rgba(200,255,0,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 24px',
+                }}>
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round">
+                    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Level</div>
+
+                {/* Category badge */}
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '6px',
+                  padding: '4px 12px', borderRadius: '99px',
+                  background: 'var(--bg-1)', border: '1px solid var(--border)',
+                  margin: '0 auto 12px', fontSize: '11px',
+                  fontWeight: 700, color: 'var(--text-2)',
+                  letterSpacing: '0.06em', textTransform: 'uppercase',
+                }}>
+                  {exercise?.category || 'exercise'}
+                </div>
+
+                <h2 style={{
+                  fontSize: 'clamp(26px, 7vw, 36px)', fontWeight: 900,
+                  color: 'var(--text-0)', letterSpacing: '-0.04em',
+                  lineHeight: 1.05, marginBottom: '12px',
+                }}>
+                  {exercise?.name || 'Workout'}
+                </h2>
+
+                <p style={{
+                  fontSize: '14px', color: 'var(--text-2)',
+                  lineHeight: 1.6, maxWidth: '280px', margin: '0 auto 28px',
+                }}>
+                  {exercise?.description || 'Get in position and start when ready.'}
+                </p>
+
+                {/* Stats row */}
+                <div style={{
+                  display: 'flex', gap: '1px',
+                  background: 'var(--border)',
+                  borderRadius: '16px', overflow: 'hidden',
+                  border: '1px solid var(--border)',
+                }}>
+                  {[
+                    { val: `${targetSets}×${exercise?.isTimed ? `${targetReps}s` : targetReps}`, label: 'Target' },
+                    { val: exercise?.difficulty || 'beginner', label: 'Level' },
+                    { val: exercise?.equipment === 'none' ? 'No gear' : exercise?.equipment || '—', label: 'Equipment' },
+                  ].map((s, i) => (
+                    <div key={i} style={{
+                      flex: 1, padding: '14px 8px', textAlign: 'center',
+                      background: 'var(--bg-1)',
+                    }}>
+                      <div style={{
+                        fontSize: '13px', fontWeight: 800,
+                        color: i === 0 ? 'var(--accent)' : 'var(--text-0)',
+                        letterSpacing: '-0.02em', marginBottom: '3px',
+                      }}>
+                        {s.val}
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                        {s.label}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Tips */}
+                {exercise?.tips && (
+                  <div style={{ marginTop: '20px', textAlign: 'left' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-2)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '10px' }}>
+                      Form tips
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                      {exercise.tips.slice(0, 3).map((tip, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                          <div style={{
+                            width: '18px', height: '18px', borderRadius: '50%',
+                            background: 'var(--accent-dim)', flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            marginTop: '1px',
+                          }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                          </div>
+                          <span style={{ fontSize: '13px', color: 'var(--text-1)', lineHeight: 1.5 }}>{tip}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
