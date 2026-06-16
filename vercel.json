@@ -1,7 +1,19 @@
 {
   "buildCommand": "DISABLE_ESLINT_PLUGIN=true react-scripts build",
   "outputDirectory": "build",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+  "routes": [
+    {
+      "src": "/static/(.*)",
+      "headers": { "cache-control": "public, max-age=31536000, immutable" },
+      "dest": "/static/$1"
+    },
+    {
+      "src": "/(.*\\.(js|css|png|ico|json|svg|woff2?|ttf|eot|map)$)",
+      "dest": "/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
   ]
 }
