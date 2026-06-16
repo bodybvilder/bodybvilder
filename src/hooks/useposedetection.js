@@ -797,6 +797,354 @@ export function usePoseDetection(videoRef, canvasRef, enabled) {
       }
     }
 
+    // ── BARBELL SQUAT ─────────────────────────────────────────────────
+    else if (exerciseId === 'barbell-squat' || exerciseId === 'bulgarian-split-squat') {
+      const leftKneeVis = lm[25]?.visibility ?? 0;
+      const rightKneeVis = lm[26]?.visibility ?? 0;
+      const useSide = leftKneeVis >= rightKneeVis ? 'left' : 'right';
+      const hip = useSide === 'left' ? lh : rh;
+      const knee = useSide === 'left' ? lk : rk;
+      const ankle = useSide === 'left' ? la : ra;
+      const shoulder = useSide === 'left' ? ls : rs;
+      const kneeAngle = calculateAngle(hip, knee, ankle);
+      const torsoAngle = calculateAngle(shoulder, hip, knee);
+      const chestUp = torsoAngle > 50;
+      const deep = kneeAngle < 95;
+      const standing = kneeAngle > 155;
+      if (deep && chestUp) { formScore = 95; feedbackText = 'Deep squat!'; }
+      else if (kneeAngle < 120 && chestUp) { formScore = 80; feedbackText = 'Go deeper'; }
+      else if (!chestUp) { formScore = 65; feedbackText = 'Chest up!'; }
+      else { formScore = 60; feedbackText = 'Break parallel'; }
+      repCounter(deep, standing, 600, 'push');
+    }
+
+    // ── DEADLIFT / RDL ────────────────────────────────────────────────
+    else if (['barbell-deadlift', 'romanian-deadlift'].includes(exerciseId)) {
+      const hipAngle = calculateAngle(ls, lh, lk);
+      const backAngle = calculateAngle(ls, lh, { x: lh.x, y: lh.y + 0.3 });
+      const hipHinge = hipAngle < 110;
+      const backFlat = Math.abs(ls.x - lh.x) < 0.15;
+      const lockout = hipAngle > 165 && Math.abs(ls.y - lh.y) < 0.05;
+      const start = hipAngle < 90;
+      if (lockout) { formScore = 95; feedbackText = 'Full lockout!'; }
+      else if (hipHinge && backFlat) { formScore = 85; feedbackText = 'Good hinge'; }
+      else if (!backFlat) { formScore = 60; feedbackText = 'Keep back flat!'; }
+      else { formScore = 70; feedbackText = 'Drive hips forward'; }
+      repCounter(start, lockout, 700, 'pull');
+    }
+
+    // ── BARBELL/DUMBBELL ROW ──────────────────────────────────────────
+    else if (['barbell-row', 'dumbbell-row', 'seated-cable-row'].includes(exerciseId)) {
+      const side = detectBestArm(lm);
+      const arm = getArmLandmarks(lm, side);
+      const elbowAngle = calculateAngle(arm.shoulder, arm.elbow, arm.wrist);
+      const torsoAngle = calculateAngle(arm.shoulder, lh, { x: lh.x, y: lh.y + 0.3 });
+      const torsoOk = exerciseId === 'seated-cable-row' ? torsoAngle > 70 : (torsoAngle > 30 && torsoAngle < 70);
+      const pulled = elbowAngle < 90;
+      const extended = elbowAngle > 155;
+      if (pulled && torsoOk) { formScore = 95; feedbackText = 'Full row!'; }
+      else if (pulled) { formScore = 80; feedbackText = 'Good pull'; }
+      else if (!torsoOk) { formScore = 65; feedbackText = exerciseId === 'seated-cable-row' ? 'Sit upright' : 'Torso 45°'; }
+      else { formScore = 60; feedbackText = 'Pull to hip'; }
+      repCounter(pulled, extended, 500, 'pull');
+    }
+
+    // ── OVERHEAD PRESS / ARNOLD PRESS ────────────────────────────────
+    else if (['overhead-press', 'arnold-press'].includes(exerciseId)) {
+      const elbowAngle = calculateAngle(ls, le, lw);
+      const wristAboveShoulder = lw.y < ls.y - 0.1;
+      const lockout = elbowAngle > 160 && wristAboveShoulder;
+      const start = elbowAngle < 100;
+      const torsoUpright = Math.abs(ls.x - lh.x) < 0.1;
+      if (lockout && torsoUpright) { formScore = 95; feedbackText = 'Full lockout!'; }
+      else if (wristAboveShoulder) { formScore = 80; feedbackText = 'Press higher'; }
+      else if (!torsoUpright) { formScore = 65; feedbackText = 'Stay upright'; }
+      else { formScore = 60; feedbackText = 'Press overhead'; }
+      repCounter(start, lockout, 600, 'push');
+    }
+
+    // ── INCLINE DUMBBELL PRESS ────────────────────────────────────────
+    else if (exerciseId === 'incline-dumbbell-press') {
+      const elbowAngle = calculateAngle(ls, le, lw);
+      const wristUp = lw.y < ls.y;
+      const lockout = elbowAngle > 155;
+      const bottom = elbowAngle < 90;
+      if (lockout && wristUp) { formScore = 95; feedbackText = 'Full lockout!'; }
+      else if (elbowAngle > 130) { formScore = 80; feedbackText = 'Press higher'; }
+      else if (bottom) { formScore = 85; feedbackText = 'Good stretch'; }
+      else { formScore = 65; feedbackText = 'Full range'; }
+      repCounter(bottom, lockout, 600, 'push');
+    }
+
+    // ── DUMBBELL FLY / CABLE FLY ─────────────────────────────────────
+    else if (['dumbbell-fly', 'cable-fly'].includes(exerciseId)) {
+      const armSpan = Math.abs(lw.x - rw.x);
+      const armHeight = (ls.y + rs.y) / 2 - (lw.y + rw.y) / 2;
+      const wideOpen = armSpan > 0.5;
+      const closed = armSpan < 0.2;
+      const level = Math.abs(armHeight) < 0.08;
+      if (wideOpen && level) { formScore = 90; feedbackText = 'Full stretch!'; }
+      else if (closed && level) { formScore = 95; feedbackText = 'Squeeze chest!'; }
+      else if (!level) { formScore = 65; feedbackText = 'Keep arms level'; }
+      else { formScore = 70; feedbackText = 'Full arc motion'; }
+      const now = Date.now();
+      if (wideOpen && repStateRef.current.phase !== 'down' && now - repStateRef.current.lastTime > 600) {
+        repStateRef.current.phase = 'down';
+      } else if (closed && repStateRef.current.phase === 'down') {
+        repStateRef.current.phase = 'up';
+        repStateRef.current.count += 1;
+        repStateRef.current.lastTime = now;
+      } else if (repStateRef.current.phase === 'ready' && wideOpen) {
+        repStateRef.current.phase = 'down';
+      }
+    }
+
+    // ── LAT PULLDOWN ─────────────────────────────────────────────────
+    else if (exerciseId === 'lat-pulldown') {
+      const elbowAngle = calculateAngle(ls, le, lw);
+      const wristAbove = lw.y < ls.y;
+      const pullDown = elbowAngle < 85 && !wristAbove;
+      const extended = elbowAngle > 155 && wristAbove;
+      const leanOk = Math.abs(ls.x - lh.x) < 0.12;
+      if (pullDown && leanOk) { formScore = 95; feedbackText = 'Full pull!'; }
+      else if (pullDown) { formScore = 80; feedbackText = 'Good pull'; }
+      else if (!leanOk) { formScore = 65; feedbackText = 'Slight lean back'; }
+      else { formScore = 60; feedbackText = 'Pull to chest'; }
+      repCounter(pullDown, extended, 600, 'pull');
+    }
+
+    // ── CABLE CURL / BARBELL CURL ────────────────────────────────────
+    else if (['cable-curl', 'barbell-curl'].includes(exerciseId)) {
+      const elbowAngle = calculateAngle(ls, le, lw);
+      const elbowStable = Math.abs(le.x - ls.x) < 0.1;
+      const peaked = elbowAngle < 55;
+      const extended = elbowAngle > 150;
+      if (peaked && elbowStable) { formScore = 95; feedbackText = 'Peak squeeze!'; }
+      else if (peaked) { formScore = 80; feedbackText = 'Elbow fixed'; }
+      else if (!elbowStable) { formScore = 65; feedbackText = 'Pin elbows'; }
+      else { formScore = 60; feedbackText = 'Curl up'; }
+      const now = Date.now();
+      if (peaked && repStateRef.current.phase === 'down' && now - repStateRef.current.lastTime > 500) {
+        repStateRef.current.phase = 'up';
+      } else if (extended && repStateRef.current.phase === 'up') {
+        repStateRef.current.phase = 'down';
+        repStateRef.current.count += 1;
+        repStateRef.current.lastTime = now;
+      } else if (repStateRef.current.phase === 'ready' && extended) {
+        repStateRef.current.phase = 'down';
+      }
+    }
+
+    // ── TRICEP PUSHDOWN / SKULL CRUSHER / CABLE KICKBACK ────────────
+    else if (['tricep-pushdown', 'skull-crusher', 'cable-kickback'].includes(exerciseId)) {
+      const elbowAngle = calculateAngle(ls, le, lw);
+      const elbowFixed = exerciseId !== 'cable-kickback' ? Math.abs(le.x - ls.x) < 0.1 : true;
+      const lockout = elbowAngle > 160;
+      const contracted = elbowAngle < 70;
+      if (lockout && elbowFixed) { formScore = 95; feedbackText = 'Full extension!'; }
+      else if (elbowAngle > 130) { formScore = 80; feedbackText = 'Extend fully'; }
+      else if (!elbowFixed) { formScore = 65; feedbackText = 'Keep elbow still'; }
+      else { formScore = 60; feedbackText = 'Push down'; }
+      repCounter(contracted, lockout, 500, 'push');
+    }
+
+    // ── FACE PULL ────────────────────────────────────────────────────
+    else if (exerciseId === 'face-pull') {
+      const elbowAngle = calculateAngle(ls, le, lw);
+      const elbowHigh = le.y < ls.y + 0.05;
+      const wristAtFace = Math.abs(lw.y - lm[0].y) < 0.15 && lw.y < ls.y;
+      const pulled = wristAtFace && elbowHigh;
+      const extended = elbowAngle > 155;
+      if (pulled) { formScore = 95; feedbackText = 'Elbows high!'; }
+      else if (elbowHigh && elbowAngle < 120) { formScore = 80; feedbackText = 'Pull to face'; }
+      else if (!elbowHigh) { formScore = 65; feedbackText = 'Elbows up!'; }
+      else { formScore = 60; feedbackText = 'Pull higher'; }
+      repCounter(pulled, extended, 500, 'pull');
+    }
+
+    // ── CABLE LATERAL RAISE ──────────────────────────────────────────
+    else if (exerciseId === 'cable-lateral-raise') {
+      const side = detectBestArm(lm);
+      const arm = getArmLandmarks(lm, side);
+      const armHeight = arm.shoulder.y - arm.wrist.y;
+      const parallel = armHeight > 0.1;
+      const atRest = armHeight < -0.02;
+      const straight = calculateAngle(arm.shoulder, arm.elbow, arm.wrist) > 145;
+      if (parallel && straight) { formScore = 95; feedbackText = 'Parallel!'; }
+      else if (parallel) { formScore = 78; feedbackText = 'Keep arm straight'; }
+      else { formScore = 60; feedbackText = 'Raise to parallel'; }
+      repCounter(parallel, atRest, 700, 'pull');
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // ── BODYBUILDING POSES ───────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════
+
+    // ── FRONT DOUBLE BICEPS ──────────────────────────────────────────
+    else if (exerciseId === 'pose-front-double-biceps') {
+      const leftArmAngle = calculateAngle(ls, le, lw);
+      const rightArmAngle = calculateAngle(rs, re, rw);
+      const leftElbowHeight = le.y < ls.y + 0.02;
+      const rightElbowHeight = re.y < rs.y + 0.02;
+      const elbowsUp = leftElbowHeight && rightElbowHeight;
+      const armsFlexed = leftArmAngle < 100 && rightArmAngle < 100;
+      const symmetry = Math.abs(leftArmAngle - rightArmAngle) < 15;
+      const shoulderWidth = Math.abs(ls.x - rs.x);
+      const hipWidth = Math.abs(lh.x - rh.x);
+      const vTaper = shoulderWidth > hipWidth * 1.1;
+      const holdScore = elbowsUp && armsFlexed ? (symmetry ? 10 : 5) : 0;
+      const taperScore = vTaper ? 15 : 5;
+      if (elbowsUp && armsFlexed && symmetry && vTaper) { formScore = 95; feedbackText = 'Stage ready!'; }
+      else if (elbowsUp && armsFlexed && symmetry) { formScore = 82; feedbackText = 'Flare your lats!'; }
+      else if (elbowsUp && armsFlexed) { formScore = 72; feedbackText = 'Even out both arms'; }
+      else if (elbowsUp) { formScore = 60; feedbackText = 'Flex both biceps'; }
+      else { formScore = 45; feedbackText = 'Raise elbows to shoulder height'; }
+      const now = Date.now();
+      if (elbowsUp && armsFlexed && now - repStateRef.current.lastTime > 3000) {
+        repStateRef.current.count += 1;
+        repStateRef.current.lastTime = now;
+      }
+    }
+
+    // ── FRONT LAT SPREAD ─────────────────────────────────────────────
+    else if (exerciseId === 'pose-front-lat-spread') {
+      const shoulderWidth = Math.abs(ls.x - rs.x);
+      const hipWidth = Math.abs(lh.x - rh.x);
+      const vTaper = shoulderWidth / Math.max(hipWidth, 0.01);
+      const handsOnHips = Math.abs(lw.y - lh.y) < 0.12 && Math.abs(rw.y - rh.y) < 0.12;
+      const chestUp = ls.y < lh.y - 0.1;
+      const goodVTaper = vTaper > 1.2;
+      if (handsOnHips && chestUp && goodVTaper) { formScore = 95; feedbackText = 'Maximum V-taper!'; }
+      else if (handsOnHips && goodVTaper) { formScore = 82; feedbackText = 'Chest up!'; }
+      else if (handsOnHips) { formScore = 68; feedbackText = 'Push lats wider'; }
+      else { formScore = 50; feedbackText = 'Hands on hips, spread lats'; }
+      const now = Date.now();
+      if (handsOnHips && now - repStateRef.current.lastTime > 3000) {
+        repStateRef.current.count += 1;
+        repStateRef.current.lastTime = now;
+      }
+    }
+
+    // ── SIDE CHEST ───────────────────────────────────────────────────
+    else if (exerciseId === 'pose-side-chest') {
+      const shoulderRotation = Math.abs(ls.x - rs.x);
+      const turnedSide = shoulderRotation < 0.15;
+      const leftElbowAngle = calculateAngle(ls, le, lw);
+      const armPress = leftElbowAngle < 100;
+      const chestUp = ls.y < lh.y - 0.08;
+      if (turnedSide && armPress && chestUp) { formScore = 95; feedbackText = 'Perfect side chest!'; }
+      else if (turnedSide && armPress) { formScore = 80; feedbackText = 'Push chest up'; }
+      else if (turnedSide) { formScore = 65; feedbackText = 'Press arm into chest'; }
+      else { formScore = 50; feedbackText = 'Turn 90 degrees'; }
+      const now = Date.now();
+      if (turnedSide && armPress && now - repStateRef.current.lastTime > 3000) {
+        repStateRef.current.count += 1;
+        repStateRef.current.lastTime = now;
+      }
+    }
+
+    // ── SIDE TRICEPS ─────────────────────────────────────────────────
+    else if (exerciseId === 'pose-side-triceps') {
+      const shoulderRotation = Math.abs(ls.x - rs.x);
+      const turnedSide = shoulderRotation < 0.15;
+      const elbowAngle = calculateAngle(ls, le, lw);
+      const armExtended = elbowAngle > 155;
+      if (turnedSide && armExtended) { formScore = 95; feedbackText = 'Tricep showing!'; }
+      else if (turnedSide) { formScore = 70; feedbackText = 'Extend arm back'; }
+      else { formScore = 50; feedbackText = 'Turn 90 degrees'; }
+      const now = Date.now();
+      if (turnedSide && armExtended && now - repStateRef.current.lastTime > 3000) {
+        repStateRef.current.count += 1;
+        repStateRef.current.lastTime = now;
+      }
+    }
+
+    // ── ABS & THIGHS ─────────────────────────────────────────────────
+    else if (exerciseId === 'pose-abs-thighs') {
+      const handsAboveHead = (lw.y + rw.y) / 2 < (ls.y + rs.y) / 2 - 0.1;
+      const handsOnHead = Math.abs((lw.y + rw.y) / 2 - lm[0].y) < 0.15;
+      const validArms = handsAboveHead || handsOnHead;
+      const kneeForward = lk.y > lh.y + 0.05;
+      const absEngaged = Math.abs(ls.x - lh.x) < 0.06;
+      if (validArms && kneeForward && absEngaged) { formScore = 95; feedbackText = 'Abs showing!'; }
+      else if (validArms && kneeForward) { formScore = 78; feedbackText = 'Crunch harder'; }
+      else if (validArms) { formScore = 65; feedbackText = 'Step one leg forward'; }
+      else { formScore = 50; feedbackText = 'Hands behind head'; }
+      const now = Date.now();
+      if (validArms && now - repStateRef.current.lastTime > 3000) {
+        repStateRef.current.count += 1;
+        repStateRef.current.lastTime = now;
+      }
+    }
+
+    // ── MOST MUSCULAR ────────────────────────────────────────────────
+    else if (exerciseId === 'pose-most-muscular') {
+      const elbowsDown = le.y > ls.y + 0.05 && re.y > rs.y + 0.05;
+      const elbowsForward = Math.abs(le.x - ls.x) < 0.15 && Math.abs(re.x - rs.x) < 0.15;
+      const forwardLean = ls.y < lh.y - 0.12;
+      const shoulderWidth = Math.abs(ls.x - rs.x);
+      const wristsTogether = Math.abs(lw.x - rw.x) < 0.25;
+      if (elbowsDown && elbowsForward && forwardLean) { formScore = 95; feedbackText = 'Crab pose! Maximum!'; }
+      else if (elbowsDown && forwardLean) { formScore = 80; feedbackText = 'Drive elbows forward'; }
+      else if (elbowsDown) { formScore = 65; feedbackText = 'Lean forward more'; }
+      else { formScore = 50; feedbackText = 'Drive elbows down to hips'; }
+      const now = Date.now();
+      if (elbowsDown && elbowsForward && now - repStateRef.current.lastTime > 3000) {
+        repStateRef.current.count += 1;
+        repStateRef.current.lastTime = now;
+      }
+    }
+
+    // ── BACK DOUBLE BICEPS / BACK LAT SPREAD ────────────────────────
+    else if (['pose-back-double-biceps', 'pose-back-lat-spread'].includes(exerciseId)) {
+      const leftArmAngle = calculateAngle(ls, le, lw);
+      const rightArmAngle = calculateAngle(rs, re, rw);
+      const shoulderWidth = Math.abs(ls.x - rs.x);
+      const hipWidth = Math.abs(lh.x - rh.x);
+      const vTaper = shoulderWidth > hipWidth * 1.1;
+      const isLatSpread = exerciseId === 'pose-back-lat-spread';
+      const handsOnHips = Math.abs(lw.y - lh.y) < 0.12 && Math.abs(rw.y - rh.y) < 0.12;
+      const armsFlexed = leftArmAngle < 100 && rightArmAngle < 100;
+      const elbowsUp = le.y < ls.y + 0.02 && re.y < rs.y + 0.02;
+      const poseOk = isLatSpread ? handsOnHips : (armsFlexed && elbowsUp);
+      if (poseOk && vTaper) { formScore = 95; feedbackText = 'Maximum width!'; }
+      else if (poseOk) { formScore = 72; feedbackText = 'Spread lats wider'; }
+      else { formScore = 50; feedbackText = isLatSpread ? 'Hands on hips, flare lats' : 'Raise elbows up'; }
+      const now = Date.now();
+      if (poseOk && now - repStateRef.current.lastTime > 3000) {
+        repStateRef.current.count += 1;
+        repStateRef.current.lastTime = now;
+      }
+    }
+
+    // ── MEN'S PHYSIQUE POSES ─────────────────────────────────────────
+    else if (['pose-mp-front', 'pose-mp-back', 'pose-mp-side'].includes(exerciseId)) {
+      const isBack = exerciseId === 'pose-mp-back';
+      const isSide = exerciseId === 'pose-mp-side';
+      const shoulderWidth = Math.abs(ls.x - rs.x);
+      const hipWidth = Math.abs(lh.x - rh.x);
+      const vTaper = shoulderWidth / Math.max(hipWidth, 0.01);
+      const turnedSide = Math.abs(ls.x - rs.x) < 0.18;
+      const posture = ls.y < lh.y - 0.1;
+      const oneHandOnHip = Math.abs(lw.y - lh.y) < 0.1 || Math.abs(rw.y - rh.y) < 0.1;
+      const goodVTaper = vTaper > 1.15;
+      if (isSide) {
+        if (turnedSide && posture) { formScore = 92; feedbackText = 'Great side profile!'; }
+        else if (turnedSide) { formScore = 72; feedbackText = 'Stand tall'; }
+        else { formScore = 50; feedbackText = 'Turn 90 degrees'; }
+      } else {
+        if (posture && oneHandOnHip && goodVTaper) { formScore = 95; feedbackText = 'Stage presence!'; }
+        else if (posture && goodVTaper) { formScore = 80; feedbackText = 'Hand on hip'; }
+        else if (posture) { formScore = 68; feedbackText = 'Show V-taper'; }
+        else { formScore = 55; feedbackText = 'Stand tall, chin up'; }
+      }
+      const now = Date.now();
+      if (posture && now - repStateRef.current.lastTime > 3000) {
+        repStateRef.current.count += 1;
+        repStateRef.current.lastTime = now;
+      }
+    }
+
     // ── DEFAULT FALLBACK ───────────────────────────────────────────────
     else {
       const shLevel = Math.abs(ls.y - rs.y) < 0.06;
@@ -813,11 +1161,6 @@ export function usePoseDetection(videoRef, canvasRef, enabled) {
 
     return { score: formScore, feedback: feedbackText, side: activeSideRef.current };
   }, [calculateAngle, isVisible, repCounter, detectBestArm, getArmLandmarks]);
-
-  // ── MediaPipe init & cleanup ───────────────────────────────────────────
-  useEffect(() => {
-    if (!enabled || !videoRef.current) {
-      setIsReady(false);
       return;
     }
 
