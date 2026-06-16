@@ -171,6 +171,8 @@ export default function PosePracticePage() {
           position: 'absolute', inset: 0,
           background: 'var(--bg-0)',
           display: 'flex', flexDirection: 'column',
+          overflowY: 'auto',
+          overflowX: 'hidden',
         }}>
           {/* Back */}
           <div style={{ padding: '20px 20px 0' }}>
@@ -184,7 +186,7 @@ export default function PosePracticePage() {
             </button>
           </div>
 
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px', textAlign: 'center' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 20px calc(40px + env(safe-area-inset-bottom))', textAlign: 'center' }}>
             {/* Pose reference preview */}
             {PoseRef && (
               <div style={{ marginBottom: '24px', opacity: 0.9 }}>
