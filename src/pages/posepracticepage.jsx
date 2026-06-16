@@ -231,13 +231,27 @@ export default function PosePracticePage() {
                 How it works
               </div>
               {[
-                { icon: '👁', text: 'Reference pose shown on screen' },
-                { icon: '📐', text: 'AI scores your pose in real-time' },
-                { icon: '⏱', text: 'Hold 70+ score for 2.5s to count' },
-                { icon: '🏆', text: 'Best score saved per pose' },
+                {
+                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+                  text: 'Reference pose shown on screen',
+                },
+                {
+                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+                  text: 'AI scores your pose in real-time',
+                },
+                {
+                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+                  text: 'Hold 70+ score for 2.5s to count',
+                },
+                {
+                  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"><path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/><path d="M4 22h16"/><path d="M18 2H6v7a6 6 0 0012 0V2z"/></svg>,
+                  text: 'Best score saved per pose',
+                },
               ].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: i < 3 ? '8px' : 0 }}>
-                  <span style={{ fontSize: '16px' }}>{item.icon}</span>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'var(--accent-dim)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {item.icon}
+                  </div>
                   <span style={{ fontSize: '13px', color: 'var(--text-1)' }}>{item.text}</span>
                 </div>
               ))}
