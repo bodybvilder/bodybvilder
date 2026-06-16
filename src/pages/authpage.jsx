@@ -61,31 +61,31 @@ export default function AuthPage({ onGuest }) {
 
         <div style={{ marginTop: '28px', textAlign: 'center' }}>
           <h1 style={{
-            fontSize: 'clamp(30px, 8vw, 44px)',
+            fontSize: 'clamp(28px, 8vw, 42px)',
             fontWeight: 900,
             letterSpacing: '-0.04em',
-            lineHeight: 1.0,
+            lineHeight: 1.05,
             marginBottom: '12px',
             color: 'var(--text-0)',
           }}>
-            Your AI Form Coach.<br />
+            Your AI<br />
             <span style={{
               background: 'var(--gradient-accent)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
             }}>
-              Real-time form correction. Rep counting. Performance scoring.
+              Form Coach.
             </span>
           </h1>
           <p style={{
             fontSize: '15px',
             color: 'var(--text-2)',
             lineHeight: 1.6,
-            maxWidth: '280px',
+            maxWidth: '260px',
             margin: '0 auto',
           }}>
-            Free, forever.
+            Real-time pose analysis, rep counting, and form scoring — right from your browser.
           </p>
         </div>
 
@@ -95,10 +95,10 @@ export default function AuthPage({ onGuest }) {
           gap: '8px',
           flexWrap: 'wrap',
           justifyContent: 'center',
-          marginTop: '32px',
+          marginTop: '28px',
           animation: 'fadeUp 0.6s 0.15s cubic-bezier(0.16,1,0.3,1) both',
         }}>
-          {['AI Form Score', 'Rep Counter', '31 Exercises', 'Free Forever'].map(f => (
+          {['AI Form Score', 'Rep Counter', '31 Exercises', 'No Equipment'].map(f => (
             <span key={f} style={{
               padding: '6px 14px',
               borderRadius: 'var(--radius-full)',
