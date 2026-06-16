@@ -821,7 +821,6 @@ export function usePoseDetection(videoRef, canvasRef, enabled) {
     // ── DEADLIFT / RDL ────────────────────────────────────────────────
     else if (['barbell-deadlift', 'romanian-deadlift'].includes(exerciseId)) {
       const hipAngle = calculateAngle(ls, lh, lk);
-      const backAngle = calculateAngle(ls, lh, { x: lh.x, y: lh.y + 0.3 });
       const hipHinge = hipAngle < 110;
       const backFlat = Math.abs(ls.x - lh.x) < 0.15;
       const lockout = hipAngle > 165 && Math.abs(ls.y - lh.y) < 0.05;
@@ -1082,7 +1081,6 @@ export function usePoseDetection(videoRef, canvasRef, enabled) {
       const elbowsDown = le.y > ls.y + 0.05 && re.y > rs.y + 0.05;
       const elbowsForward = Math.abs(le.x - ls.x) < 0.15 && Math.abs(re.x - rs.x) < 0.15;
       const forwardLean = ls.y < lh.y - 0.12;
-      const shoulderWidth = Math.abs(ls.x - rs.x);
       const wristsTogether = Math.abs(lw.x - rw.x) < 0.25;
       if (elbowsDown && elbowsForward && forwardLean) { formScore = 95; feedbackText = 'Crab pose! Maximum!'; }
       else if (elbowsDown && forwardLean) { formScore = 80; feedbackText = 'Drive elbows forward'; }
@@ -1161,6 +1159,11 @@ export function usePoseDetection(videoRef, canvasRef, enabled) {
 
     return { score: formScore, feedback: feedbackText, side: activeSideRef.current };
   }, [calculateAngle, isVisible, repCounter, detectBestArm, getArmLandmarks]);
+
+  // ── MediaPipe init & cleanup ───────────────────────────────────────────
+  useEffect(() => {
+    if (!enabled || !videoRef.current) {
+      setIsReady(false);
       return;
     }
 
