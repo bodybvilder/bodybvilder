@@ -58,8 +58,9 @@ export default function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Hide on workout page (fullscreen camera)
-  if (location.pathname === '/workout') return null;
+  // Hide on fullscreen pages
+  const HIDDEN_PATHS = ['/workout', '/pose'];
+  if (HIDDEN_PATHS.includes(location.pathname)) return null;
 
   return (
     <nav style={{
@@ -77,7 +78,9 @@ export default function BottomNav() {
       zIndex: 100,
     }}>
       {NAV_ITEMS.map(item => {
-        const active = location.pathname === item.path;
+        // Stats tab also active for /ffmi and /food
+        const active = location.pathname === item.path ||
+          (item.path === '/stats' && ['/ffmi', '/food'].includes(location.pathname));
         return (
           <button
             key={item.path}

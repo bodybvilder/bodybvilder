@@ -303,6 +303,35 @@ export default function ProfilePage({ user, isGuest }) {
       {/* Settings */}
       <div style={{ padding: '0 20px' }}>
 
+        {/* ── Quick Tools ── */}
+        <h3 style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px', paddingLeft: '4px' }}>
+          Tools
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+          <button onClick={() => navigate('/ffmi')} style={{
+            background: 'var(--bg-secondary)', border: '1px solid rgba(255,255,255,0.03)',
+            borderRadius: '16px', padding: '16px', cursor: 'pointer', textAlign: 'left',
+            fontFamily: 'inherit',
+          }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>FFMI</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Natural limit</div>
+          </button>
+          <button onClick={() => navigate('/food')} style={{
+            background: 'var(--bg-secondary)', border: '1px solid rgba(255,255,255,0.03)',
+            borderRadius: '16px', padding: '16px', cursor: 'pointer', textAlign: 'left',
+            fontFamily: 'inherit',
+          }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '8px' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '2px' }}>Food Scan</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>AI macros</div>
+          </button>
+        </div>
+
         {/* ── PRO Status Card ── */}
         {isPro ? (
           <div style={{
