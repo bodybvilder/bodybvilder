@@ -346,7 +346,7 @@ function ExerciseCard({ exercise, index, navigate }) {
 
   return (
     <div
-      onClick={() => navigate(`/workout?exercise=${exercise.id}`)}
+      onClick={() => navigate(exercise.isPose ? `/pose?exercise=${exercise.id}` : `/workout?exercise=${exercise.id}`)}
       onPointerDown={() => setPressed(true)}
       onPointerUp={() => setPressed(false)}
       onPointerLeave={() => setPressed(false)}
@@ -365,18 +365,32 @@ function ExerciseCard({ exercise, index, navigate }) {
     >
       {/* Top row */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '10px' }}>
-        {/* Difficulty dot + label */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '5px',
-          padding: '3px 8px',
-          borderRadius: '99px',
-          background: `${DIFF_COLOR[exercise.difficulty]}15`,
-        }}>
-          <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: DIFF_COLOR[exercise.difficulty] }} />
-          <span style={{ fontSize: '10px', fontWeight: 700, color: DIFF_COLOR[exercise.difficulty], letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-            {exercise.difficulty}
-          </span>
-        </div>
+        {/* Difficulty or Pose badge */}
+        {exercise.isPose ? (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '5px',
+            padding: '3px 8px', borderRadius: '99px',
+            background: 'rgba(200,255,0,0.12)',
+          }}>
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="var(--accent)">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              {exercise.division === 'mens-physique' ? "Men's Phys." : 'Classic'}
+            </span>
+          </div>
+        ) : (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '5px',
+            padding: '3px 8px', borderRadius: '99px',
+            background: `${DIFF_COLOR[exercise.difficulty]}15`,
+          }}>
+            <div style={{ width: '5px', height: '5px', borderRadius: '50%', background: DIFF_COLOR[exercise.difficulty] }} />
+            <span style={{ fontSize: '10px', fontWeight: 700, color: DIFF_COLOR[exercise.difficulty], letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              {exercise.difficulty}
+            </span>
+          </div>
+        )}
 
         {/* Target sets×reps */}
         <span style={{
