@@ -187,6 +187,48 @@ export default function StatsPage() {
         </div>
       </div>
 
+      {/* ── Tools ── */}
+      <div style={{ padding: '0 20px 20px', animation: 'fadeUp 0.4s 0.12s cubic-bezier(0.16,1,0.3,1) both' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-0)', letterSpacing: '-0.02em', marginBottom: '12px' }}>
+          Tools
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <button onClick={() => navigate('/ffmi')} style={{
+            background: 'var(--bg-1)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: '16px', cursor: 'pointer', textAlign: 'left',
+            fontFamily: 'inherit', transition: 'border-color 0.15s ease',
+          }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(200,255,0,0.3)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+          >
+            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round">
+                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-0)', marginBottom: '2px' }}>FFMI Calculator</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>Natural limit checker</div>
+          </button>
+
+          <button onClick={() => navigate('/food')} style={{
+            background: 'var(--bg-1)', border: '1px solid var(--border)',
+            borderRadius: '16px', padding: '16px', cursor: 'pointer', textAlign: 'left',
+            fontFamily: 'inherit', transition: 'border-color 0.15s ease',
+          }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(200,255,0,0.3)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+          >
+            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round">
+                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/>
+              </svg>
+            </div>
+            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-0)', marginBottom: '2px' }}>Food Scanner</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>AI macro from photo</div>
+          </button>
+        </div>
+      </div>
+
       {/* ── Recent Activity ── */}
       <div style={{
         padding: '0 20px',
