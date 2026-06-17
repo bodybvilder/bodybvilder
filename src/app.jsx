@@ -9,6 +9,7 @@ import ProPage from './pages/propage';
 import PosePracticePage from './pages/posepracticepage';
 import FFMIPage from './pages/ffmipage';
 import FoodScanPage from './pages/foodscanpage';
+import PlanBuilderPage from './pages/planbuilderpage';
 import BottomNav from './components/bottomnav';
 import SplashScreen from './components/splashscreen';
 import Logo from './components/logo';
@@ -97,6 +98,7 @@ function MainApp({ user, isGuest }) {
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/ffmi" element={<FFMIPage />} />
           <Route path="/food" element={<FoodScanPage />} />
+          <Route path="/plan" element={<PlanBuilderPage />} />
           <Route path="/profile" element={<ProfilePage user={user} isGuest={isGuest} />} />
           <Route path="/pro" element={<ProPage user={user} />} />
         </Routes>

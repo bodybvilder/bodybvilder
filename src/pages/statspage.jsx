@@ -235,6 +235,31 @@ export default function StatsPage() {
             <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-0)', marginBottom: '2px' }}>Food Scanner</div>
             <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>AI macro from photo</div>
           </button>
+
+          <button onClick={() => navigate('/plan')} style={{
+            background: 'var(--bg-1)', border: '1px solid rgba(200,255,0,0.15)',
+            borderRadius: '16px', padding: '16px', cursor: 'pointer', textAlign: 'left',
+            fontFamily: 'inherit', gridColumn: '1 / -1', transition: 'border-color 0.15s ease',
+          }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(200,255,0,0.35)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(200,255,0,0.15)'}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-0)' }}>AI Plan Builder</div>
+                  <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--accent)', background: 'var(--accent-dim)', padding: '2px 6px', borderRadius: '99px', letterSpacing: '0.05em' }}>PRO</span>
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>GPT-4o generates your personalized weekly program</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </button>
         </div>
       </div>
 
