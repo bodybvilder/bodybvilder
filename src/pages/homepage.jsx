@@ -150,6 +150,55 @@ export default function HomePage({ user, isGuest }) {
         ))}
       </div>
 
+      {/* ── Coach B Quick Access ─────────────────────────────────────────── */}
+      <div
+        onClick={() => navigate('/trainer')}
+        style={{
+          margin: '0 20px 16px',
+          padding: '14px 16px',
+          borderRadius: '16px',
+          background: 'linear-gradient(135deg, rgba(200,255,0,0.1) 0%, rgba(57,255,20,0.04) 100%)',
+          border: '1px solid rgba(200,255,0,0.2)',
+          display: 'flex', alignItems: 'center', gap: '12px',
+          cursor: 'pointer',
+          transition: 'border-color 0.15s ease',
+          animation: 'fadeUp 0.4s 0.04s cubic-bezier(0.16,1,0.3,1) both',
+        }}
+        onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(200,255,0,0.4)'}
+        onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(200,255,0,0.2)'}
+      >
+        {/* Avatar */}
+        <div style={{
+          width: '40px', height: '40px', borderRadius: '50%',
+          background: 'var(--accent-dim)',
+          border: '2px solid rgba(200,255,0,0.3)',
+          flexShrink: 0, position: 'relative',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--accent)">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          </svg>
+          <div style={{
+            position: 'absolute', bottom: '1px', right: '1px',
+            width: '9px', height: '9px', borderRadius: '50%',
+            background: 'var(--green)', border: '2px solid var(--bg-0)',
+          }} />
+        </div>
+
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-0)', letterSpacing: '-0.02em', marginBottom: '1px' }}>
+            Coach B
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>
+            AI Personal Trainer · Ask anything
+          </div>
+        </div>
+
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="2" strokeLinecap="round">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </div>
+
       {/* ── PRO BANNER ─────────────────────────────────────────────────── */}
       {!isPro && !proBannerDismissed && (
         <div style={{

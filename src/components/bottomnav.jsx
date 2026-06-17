@@ -30,6 +30,17 @@ const NAV_ITEMS = [
     ),
   },
   {
+    path: '/trainer',
+    label: 'Coach',
+    icon: (active) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+        stroke={active ? 'var(--accent)' : 'var(--text-3)'}
+        strokeWidth={active ? '2.5' : '2'} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+      </svg>
+    ),
+  },
+  {
     path: '/stats',
     label: 'Progress',
     icon: (active) => (
@@ -78,9 +89,9 @@ export default function BottomNav() {
       zIndex: 100,
     }}>
       {NAV_ITEMS.map(item => {
-        // Stats tab also active for /ffmi and /food
+        // Stats tab also active for /ffmi, /food, /plan
         const active = location.pathname === item.path ||
-          (item.path === '/stats' && ['/ffmi', '/food'].includes(location.pathname));
+          (item.path === '/stats' && ['/ffmi', '/food', '/plan'].includes(location.pathname));
         return (
           <button
             key={item.path}

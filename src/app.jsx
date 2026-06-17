@@ -10,6 +10,7 @@ import PosePracticePage from './pages/posepracticepage';
 import FFMIPage from './pages/ffmipage';
 import FoodScanPage from './pages/foodscanpage';
 import PlanBuilderPage from './pages/planbuilderpage';
+import TrainerPage from './pages/trainerpage';
 import BottomNav from './components/bottomnav';
 import SplashScreen from './components/splashscreen';
 import Logo from './components/logo';
@@ -130,6 +131,7 @@ function MainApp({ user, isGuest }) {
           <Route path="/ffmi" element={<FFMIPage />} />
           <Route path="/food" element={<FoodScanPage />} />
           <Route path="/plan" element={<PlanBuilderPage />} />
+          <Route path="/trainer" element={<TrainerPage user={user} />} />
           <Route path="/profile" element={<ProfilePage user={user} isGuest={isGuest} />} />
           <Route path="/pro" element={<ProPage user={user} />} />
         </Routes>
@@ -153,6 +155,10 @@ function DesktopSidebar({ user, isGuest }) {
     {
       path: '/workout', label: 'Workout',
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+    },
+    {
+      path: '/trainer', label: 'Coach B',
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
     },
     {
       path: '/stats', label: 'Progress',
@@ -201,7 +207,7 @@ function DesktopSidebar({ user, isGuest }) {
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
         {navItems.map(item => {
           const active = location.pathname === item.path ||
-            (item.path === '/stats' && ['/ffmi', '/food'].includes(location.pathname));
+            (item.path === '/stats' && ['/ffmi', '/food', '/plan'].includes(location.pathname));
           return (
             <button
               key={item.path}
