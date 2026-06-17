@@ -722,6 +722,260 @@ export const exercises = [
   },
 
   // ══════════════════════════════════════════════════════════
+  // ── COMPOUND BODYWEIGHT / CARDIO ─────────────────────────
+  // ══════════════════════════════════════════════════════════
+  {
+    id: 'burpee',
+    name: 'Burpee',
+    category: 'cardio',
+    muscles: ['full-body', 'chest', 'legs', 'core', 'shoulders'],
+    description: 'Drop to push-up, jump back up with hands overhead. Ultimate full-body conditioning.',
+    tips: ['Hands shoulder-width', 'Chest to floor on push-up', 'Explosive jump', 'Clap overhead at top', 'Land soft'],
+    targetReps: 10,
+    targetSets: 3,
+    difficulty: 'intermediate',
+    equipment: 'none',
+    formPoints: ['push_up_depth', 'explosive_jump', 'landing_soft']
+  },
+  {
+    id: 'box-jump',
+    name: 'Box Jump',
+    category: 'legs',
+    muscles: ['quads', 'glutes', 'calves', 'hamstrings'],
+    description: 'Explosive jump onto box. Builds power and athleticism.',
+    tips: ['Squat slightly before jump', 'Swing arms for momentum', 'Land with soft knees', 'Step down — do not jump down', 'Full extension at top'],
+    targetReps: 8,
+    targetSets: 4,
+    difficulty: 'intermediate',
+    equipment: 'box',
+    formPoints: ['squat_depth', 'explosive_drive', 'landing_soft']
+  },
+  {
+    id: 'step-up',
+    name: 'Step-Up',
+    category: 'legs',
+    muscles: ['quads', 'glutes', 'hamstrings'],
+    description: 'Step onto box or bench one leg at a time. Unilateral leg builder.',
+    tips: ['Drive through heel on box', 'Knee tracks over toe', 'Full hip extension at top', 'Control the descent', 'Hold dumbbells to add load'],
+    targetReps: 12,
+    targetSets: 3,
+    difficulty: 'beginner',
+    equipment: 'box/bench',
+    formPoints: ['heel_drive', 'knee_tracking', 'hip_extension']
+  },
+
+  // ══════════════════════════════════════════════════════════
+  // ── GYM — MACHINE EXERCISES ───────────────────────────────
+  // ══════════════════════════════════════════════════════════
+  {
+    id: 'leg-press',
+    name: 'Leg Press',
+    category: 'legs',
+    muscles: ['quads', 'glutes', 'hamstrings'],
+    description: 'Push weight plate away with legs on machine. Safe quad builder for all levels.',
+    tips: ['Feet shoulder-width on plate', 'Lower until 90 degrees', 'Never lock out completely', 'Push through heels', 'Keep lower back on pad'],
+    targetReps: 12,
+    targetSets: 4,
+    difficulty: 'beginner',
+    equipment: 'leg-press-machine',
+    formPoints: ['knee_angle', 'foot_position', 'back_contact'],
+    cameraAngle: 'side'
+  },
+  {
+    id: 'leg-extension',
+    name: 'Leg Extension',
+    category: 'legs',
+    muscles: ['quads'],
+    description: 'Extend legs against resistance pad. Pure quad isolation.',
+    tips: ['Full extension at top', 'Squeeze quads hard', 'Slow negative', 'Avoid swinging', 'Adjust pad to just above ankle'],
+    targetReps: 15,
+    targetSets: 3,
+    difficulty: 'beginner',
+    equipment: 'leg-extension-machine',
+    formPoints: ['full_extension', 'quad_squeeze', 'controlled_descent']
+  },
+  {
+    id: 'leg-curl',
+    name: 'Leg Curl',
+    category: 'legs',
+    muscles: ['hamstrings', 'calves'],
+    description: 'Curl weight toward glutes lying on machine. Best hamstring isolation.',
+    tips: ['Full range of motion', 'Squeeze hamstrings at top', 'Slow controlled negative', 'Hips stay on pad', 'Toes pointed for more activation'],
+    targetReps: 12,
+    targetSets: 3,
+    difficulty: 'beginner',
+    equipment: 'leg-curl-machine',
+    formPoints: ['curl_range', 'hamstring_squeeze', 'hip_position']
+  },
+  {
+    id: 'hack-squat',
+    name: 'Hack Squat',
+    category: 'legs',
+    muscles: ['quads', 'glutes', 'hamstrings'],
+    description: 'Machine squat with back supported. Allows more depth and quad focus.',
+    tips: ['Feet shoulder-width on platform', 'Lower until thighs parallel', 'Drive through heels', 'Keep back against pad', 'Full lockout at top'],
+    targetReps: 10,
+    targetSets: 4,
+    difficulty: 'intermediate',
+    equipment: 'hack-squat-machine',
+    formPoints: ['squat_depth', 'knee_tracking', 'back_contact'],
+    cameraAngle: 'side'
+  },
+
+  // ══════════════════════════════════════════════════════════
+  // ── GYM — MORE BARBELL / DUMBBELL ────────────────────────
+  // ══════════════════════════════════════════════════════════
+  {
+    id: 'barbell-bench-press',
+    name: 'Barbell Bench Press',
+    category: 'chest',
+    muscles: ['chest', 'triceps', 'front-delts'],
+    description: 'The king of chest exercises. Barbell pressed from chest to lockout on flat bench.',
+    tips: ['Arch back slightly', 'Retract shoulder blades', 'Bar to mid-chest', 'Elbows 45–75 degrees', 'Drive through entire foot'],
+    targetReps: 8,
+    targetSets: 4,
+    difficulty: 'intermediate',
+    equipment: 'barbell',
+    formPoints: ['bar_path', 'elbow_angle', 'arch', 'lockout'],
+    cameraAngle: 'side'
+  },
+  {
+    id: 'dumbbell-shoulder-press',
+    name: 'Dumbbell Shoulder Press',
+    category: 'shoulders',
+    muscles: ['all-delts', 'triceps', 'upper-traps'],
+    description: 'Press dumbbells overhead seated or standing. Greater range of motion than barbell.',
+    tips: ['Start at ear height', 'Press up and slightly in', 'Full lockout at top', 'Control descent', 'Neutral spine throughout'],
+    targetReps: 10,
+    targetSets: 3,
+    difficulty: 'beginner',
+    equipment: 'dumbbell',
+    formPoints: ['lockout', 'elbow_path', 'torso_upright']
+  },
+  {
+    id: 'upright-row',
+    name: 'Upright Row',
+    category: 'shoulders',
+    muscles: ['side-delts', 'traps', 'biceps'],
+    description: 'Pull barbell or dumbbells up along body to chin. Builds shoulder width and traps.',
+    tips: ['Grip slightly narrower than shoulder-width', 'Lead with elbows', 'Elbows above wrists', 'Pull to upper chest/chin', 'No momentum'],
+    targetReps: 12,
+    targetSets: 3,
+    difficulty: 'intermediate',
+    equipment: 'barbell/dumbbell',
+    formPoints: ['elbow_height', 'bar_path', 'torso_still']
+  },
+  {
+    id: 'barbell-shrug',
+    name: 'Barbell Shrug',
+    category: 'back',
+    muscles: ['traps', 'rhomboids'],
+    description: 'Elevate shoulders as high as possible with barbell. Builds trap mass.',
+    tips: ['Heavy weight', 'Full range of motion', 'Pause at top', 'No elbow bend', 'Roll shoulders back at top'],
+    targetReps: 12,
+    targetSets: 3,
+    difficulty: 'beginner',
+    equipment: 'barbell',
+    formPoints: ['shrug_height', 'no_elbow_bend', 'shoulder_roll']
+  },
+  {
+    id: 't-bar-row',
+    name: 'T-Bar Row',
+    category: 'back',
+    muscles: ['lats', 'rhomboids', 'biceps', 'rear-delts'],
+    description: 'Row with chest on pad or bent over landmine. Great for back thickness.',
+    tips: ['Chest on pad or 45° torso', 'Pull to lower chest', 'Squeeze shoulder blades', 'Full stretch at bottom', 'Control the negative'],
+    targetReps: 10,
+    targetSets: 4,
+    difficulty: 'intermediate',
+    equipment: 'barbell/t-bar',
+    formPoints: ['torso_angle', 'pull_depth', 'shoulder_blades'],
+    cameraAngle: 'side'
+  },
+  {
+    id: 'good-morning',
+    name: 'Good Morning',
+    category: 'back',
+    muscles: ['hamstrings', 'lower-back', 'glutes'],
+    description: 'Bar on back, hinge forward at hips. Builds posterior chain strength.',
+    tips: ['Bar on upper traps', 'Slight knee bend', 'Hinge from hips, not waist', 'Keep back flat', 'Feel hamstring stretch at bottom'],
+    targetReps: 10,
+    targetSets: 3,
+    difficulty: 'intermediate',
+    equipment: 'barbell',
+    formPoints: ['hip_hinge', 'back_flat', 'hamstring_stretch'],
+    cameraAngle: 'side'
+  },
+  {
+    id: 'barbell-hip-thrust',
+    name: 'Hip Thrust',
+    category: 'legs',
+    muscles: ['glutes', 'hamstrings', 'core'],
+    description: 'Back on bench, barbell on hips, drive hips to ceiling. Best glute builder.',
+    tips: ['Upper back on bench edge', 'Bar padded on hip crease', 'Drive through heels', 'Squeeze glutes hard at top', 'Full hip extension'],
+    targetReps: 12,
+    targetSets: 4,
+    difficulty: 'intermediate',
+    equipment: 'barbell',
+    formPoints: ['hip_extension', 'glute_squeeze', 'back_angle'],
+    cameraAngle: 'side'
+  },
+  {
+    id: 'preacher-curl',
+    name: 'Preacher Curl',
+    category: 'arms',
+    muscles: ['biceps', 'brachialis'],
+    description: 'Arms braced on preacher pad, curl weight up. Maximum bicep isolation.',
+    tips: ['Full extension at bottom', 'Squeeze at peak', 'No cheating possible', 'Slow negative', 'Elbow stays on pad'],
+    targetReps: 10,
+    targetSets: 3,
+    difficulty: 'beginner',
+    equipment: 'barbell/preacher-bench',
+    formPoints: ['elbow_on_pad', 'full_extension', 'peak_contraction']
+  },
+  {
+    id: 'incline-dumbbell-curl',
+    name: 'Incline Dumbbell Curl',
+    category: 'arms',
+    muscles: ['biceps', 'long-head'],
+    description: 'Seated on incline bench, arms hang back. Stretches long head of bicep.',
+    tips: ['45° incline bench', 'Arms hang fully back', 'Full stretch at bottom', 'Curl to peak contraction', 'No swinging'],
+    targetReps: 10,
+    targetSets: 3,
+    difficulty: 'beginner',
+    equipment: 'dumbbell',
+    formPoints: ['arm_hang', 'curl_range', 'no_swing'],
+    isOneArm: true
+  },
+  {
+    id: 'incline-hammer-curl',
+    name: 'Incline Hammer Curl',
+    category: 'arms',
+    muscles: ['brachialis', 'biceps', 'forearms'],
+    description: 'Hammer curl on incline bench. Best for brachialis and arm thickness.',
+    tips: ['Neutral grip throughout', 'Arms hang fully at start', 'Elbows back', 'Full range of motion', 'Slow and controlled'],
+    targetReps: 10,
+    targetSets: 3,
+    difficulty: 'beginner',
+    equipment: 'dumbbell',
+    formPoints: ['neutral_grip', 'arm_hang', 'curl_range'],
+    isOneArm: true
+  },
+  {
+    id: 'reverse-fly',
+    name: 'Reverse Fly',
+    category: 'shoulders',
+    muscles: ['rear-delts', 'rhomboids', 'traps'],
+    description: 'Bent over, raise arms to sides. Best rear delt isolation.',
+    tips: ['Torso parallel to floor', 'Slight elbow bend', 'Lead with elbows', 'Squeeze shoulder blades', 'No momentum'],
+    targetReps: 15,
+    targetSets: 3,
+    difficulty: 'beginner',
+    equipment: 'dumbbell',
+    formPoints: ['torso_angle', 'arm_path', 'shoulder_blade_squeeze']
+  },
+
+  // ══════════════════════════════════════════════════════════
   // ── BODYBUILDING POSES — CLASSIC (IFBB/Mr. Olympia Standard)
   // ══════════════════════════════════════════════════════════
   {
@@ -1014,7 +1268,8 @@ export const categories = [
   { id: 'triceps',  name: 'Triceps',  icon: 'triceps' },
   { id: 'arms',     name: 'Biceps',   icon: 'arms' },
   { id: 'legs',     name: 'Legs',     icon: 'legs' },
-  { id: 'core',     name: 'Core',     icon: 'core' }
+  { id: 'core',     name: 'Core',     icon: 'core' },
+  { id: 'cardio',   name: 'Cardio',   icon: 'cardio' }
 ];
 
 export const getExerciseById = (id) => exercises.find(e => e.id === id);

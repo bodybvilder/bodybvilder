@@ -71,11 +71,35 @@ const DB_ID_MAP = {
 
   // ── Core ──────────────────────────────────────────────────────────────
   'plank':                'Plank',
-  'hollow-body':          'Seated_Ab_Crunch',
-  'crunch':               'Crunch',
+  'hollow-body':          'Crunches',
+  'crunch':               'Crunches',
   'mountain-climber':     'Mountain_Climbers',
   'leg-raise':            'Flat_Bench_Lying_Leg_Raise',
   'russian-twist':        'Russian_Twist',
+
+  // ── Cardio / Compound ─────────────────────────────────────────────────
+  'burpee':               'Freehand_Jump_Squat',
+  'box-jump':             'Box_Jump_Multiple_Response',
+  'step-up':              'Step-up_with_Knee_Raise',
+
+  // ── Machine Legs ──────────────────────────────────────────────────────
+  'leg-press':            'Leg_Press',
+  'leg-extension':        'Leg_Extensions',
+  'leg-curl':             'Lying_Leg_Curls',
+  'hack-squat':           'Hack_Squat',
+
+  // ── More Barbell / Dumbbell ───────────────────────────────────────────
+  'barbell-bench-press':  'Barbell_Bench_Press_-_Medium_Grip',
+  'dumbbell-shoulder-press': 'Dumbbell_Shoulder_Press',
+  'upright-row':          'Upright_Barbell_Row',
+  'barbell-shrug':        'Barbell_Shrug',
+  't-bar-row':            'T-Bar_Row_with_Handle',
+  'good-morning':         'Good_Morning',
+  'barbell-hip-thrust':   'Barbell_Hip_Thrust',
+  'preacher-curl':        'Preacher_Curl',
+  'incline-dumbbell-curl':'Incline_Dumbbell_Curl',
+  'incline-hammer-curl':  'Incline_Hammer_Curls',
+  'reverse-fly':          'Reverse_Flyes',
 };
 
 const imgUrl = (dbId, frame) =>
