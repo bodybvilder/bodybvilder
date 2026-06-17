@@ -4,6 +4,8 @@ import { usePoseDetection } from '../hooks/useposedetection';
 import SkeletonOverlay from '../components/skeletonoverlay';
 import WorkoutTimer from '../components/workouttimer';
 import ShareCard from '../components/sharecard';
+import MuscleDiagram, { MuscleList } from '../components/musclediagram';
+import ExerciseGif from '../components/exercisegif';
 import { getExerciseById } from '../data/exercises';
 
 // ── SVG ICONS (NO EMOJI) ─────────────────────────────────────────────────
@@ -350,6 +352,28 @@ export default function WorkoutPage() {
                 }}>
                   {exercise?.description || 'Get in position and start when ready.'}
                 </p>
+
+              {/* GIF + Muscle Diagram row */}
+                <div style={{
+                  display: 'flex',
+                  gap: '16px',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '20px',
+                }}>
+                  {/* Exercise GIF */}
+                  <ExerciseGif exerciseId={exerciseId} size={140} />
+
+                  {/* Muscle Diagram */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
+                    <MuscleDiagram
+                      muscles={exercise?.muscles || []}
+                      exerciseId={exerciseId}
+                      size={90}
+                    />
+                    <MuscleList muscles={exercise?.muscles || []} />
+                  </div>
+                </div>
 
                 {/* Stats row */}
                 <div style={{
