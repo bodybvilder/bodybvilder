@@ -72,7 +72,7 @@ const THRESHOLDS = {
   }
 };
 
-export function usePoseDetection(videoRef, canvasRef, enabled) {
+export function usePoseDetection(videoRef, canvasRef, enabled, facingMode = 'user') {
   const [isReady, setIsReady] = useState(false);
   const [score, setScore] = useState(0);
   const [feedback, setFeedback] = useState('');
@@ -1242,7 +1242,8 @@ export function usePoseDetection(videoRef, canvasRef, enabled) {
             }
           },
           width: 640,
-          height: 480
+          height: 480,
+          facingMode, // 'user' = front, 'environment' = back
         });
 
         cameraRef.current = camera;

@@ -49,6 +49,12 @@ export default function WorkoutPage() {
   const [workoutStartTime, setWorkoutStartTime] = useState(0);
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [restDuration, setRestDuration] = useState(60);
+  // Camera controls
+  const [facingMode, setFacingMode] = useState('user'); // 'user'=front, 'environment'=back
+  const [isRecording, setIsRecording] = useState(false);
+  const [captureFlash, setCaptureFlash] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const recordedChunksRef = useRef([]);
 
   // Custom sets & reps — user can override exercise defaults
   const [customSets, setCustomSets] = useState(null);
@@ -58,9 +64,10 @@ export default function WorkoutPage() {
   const targetReps = customReps ?? exercise?.targetReps ?? 12;
   
   const { score, feedback, repCount, resetRepCount } = usePoseDetection(
-    videoRef, 
-    canvasRef, 
-    cameraEnabled && isWorkoutActive
+    videoRef,
+    canvasRef,
+    cameraEnabled && isWorkoutActive,
+    facingMode
   );
   
   const controlsTimeoutRef = useRef(null);
@@ -181,6 +188,100 @@ export default function WorkoutPage() {
     resetRepCount();
     setIsWorkoutActive(true);
   };
+
+  // ── Camera flip ──────────────────────────────────────────────────────
+  const handleFlipCamera = useCallback(() => {
+    // Stop current camera, switch facing mode, restart
+    setCameraEnabled(false);
+    setTimeout(() => {
+      setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+      setCameraEnabled(true);
+    }, 200);
+  }, []);
+
+  // ── Screenshot ───────────────────────────────────────────────────────
+  const handleScreenshot = useCallback(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+
+    // Create composite canvas: video + skeleton overlay
+    const snap = document.createElement('canvas');
+    snap.width = video.videoWidth || 640;
+    snap.height = video.videoHeight || 480;
+    const ctx = snap.getContext('2d');
+
+    // Mirror flip for front camera
+    if (facingMode === 'user') {
+      ctx.translate(snap.width, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(video, 0, 0, snap.width, snap.height);
+    if (facingMode === 'user') {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+    // Draw skeleton overlay
+    ctx.drawImage(canvas, 0, 0, snap.width, snap.height);
+
+    // Flash effect
+    setCaptureFlash(true);
+    setTimeout(() => setCaptureFlash(false), 300);
+
+    // Download or share
+    snap.toBlob(blob => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      if (navigator.share && navigator.canShare({ files: [new File([blob], 'workout.jpg', { type: 'image/jpeg' })] })) {
+        navigator.share({
+          title: 'BODYBVILDER Workout',
+          text: `${exercise?.name} — Form Score: ${score}`,
+          files: [new File([blob], 'workout.jpg', { type: 'image/jpeg' })],
+        }).catch(() => {});
+      } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bodybvilder-${exercise?.id || 'workout'}.jpg`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    }, 'image/jpeg', 0.92);
+  }, [facingMode, exercise, score]);
+
+  // ── Record start/stop ────────────────────────────────────────────────
+  const handleToggleRecord = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !video.srcObject) return;
+
+    if (!isRecording) {
+      recordedChunksRef.current = [];
+      const stream = video.srcObject;
+      const options = { mimeType: 'video/webm;codecs=vp9' };
+      let recorder;
+      try {
+        recorder = new MediaRecorder(stream, options);
+      } catch {
+        recorder = new MediaRecorder(stream); // fallback
+      }
+      recorder.ondataavailable = e => {
+        if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `bodybvilder-${exercise?.id || 'workout'}-${Date.now()}.webm`;
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+      recorder.start(1000); // save every 1 second
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+    } else {
+      mediaRecorderRef.current?.stop();
+      setIsRecording(false);
+    }
+  }, [isRecording, exercise]);
   
   return (
     <div style={{ 
@@ -207,7 +308,7 @@ export default function WorkoutPage() {
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
-                transform: 'scaleX(-1)'
+                transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
               }}
               playsInline
               muted
@@ -218,30 +319,59 @@ export default function WorkoutPage() {
                 position: 'absolute',
                 width: '100%',
                 height: '100%',
-                transform: 'scaleX(-1)',
+                transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
                 pointerEvents: 'none'
               }}
             />
             <SkeletonOverlay score={score} feedback={feedback} />
             <WorkoutTimer isRunning={isWorkoutActive} />
-            
-            {/* Set Counter */}
+
+            {/* ── Capture flash ── */}
+            {captureFlash && (
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.65)', zIndex: 25, pointerEvents: 'none' }} />
+            )}
+
+            {/* ── Recording badge ── */}
+            {isRecording && (
+              <div style={{
+                position: 'absolute', top: '20px', left: '20px',
+                display: 'flex', alignItems: 'center', gap: '6px',
+                background: 'rgba(255,59,59,0.85)', backdropFilter: 'blur(8px)',
+                borderRadius: '99px', padding: '5px 10px', zIndex: 15, pointerEvents: 'none',
+              }}>
+                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#fff', animation: 'pulseMuscle 1s ease-in-out infinite' }} />
+                <span style={{ fontSize: '11px', fontWeight: 800, color: '#fff', letterSpacing: '0.06em' }}>REC</span>
+              </div>
+            )}
+
+            {/* ── Camera controls — flip / screenshot / record ── */}
             <div style={{
-              position: 'absolute',
-              top: '20px',
-              right: '20px',
-              background: 'rgba(0,0,0,0.6)',
-              backdropFilter: 'blur(10px)',
-              borderRadius: '16px',
-              padding: '10px 16px',
-              zIndex: 10,
-              pointerEvents: 'none'
+              position: 'absolute', top: '20px', right: '20px',
+              display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 15,
             }}>
-              <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>Set </span>
-              <span style={{ fontSize: '18px', fontWeight: 800, color: '#fff' }}>
-                {currentSet}/{targetSets}
-              </span>
+              {/* Set counter pill */}
+              <div style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(10px)', borderRadius: '12px', padding: '7px 13px', textAlign: 'center' }}>
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>Set </span>
+                <span style={{ fontSize: '15px', fontWeight: 800, color: '#fff' }}>{currentSet}/{targetSets}</span>
+              </div>
+              {/* Flip */}
+              <button onClick={handleFlipCamera} style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M1 4v6h6M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10M23 14l-4.64 4.36A9 9 0 013.51 15"/></svg>
+              </button>
+              {/* Screenshot */}
+              <button onClick={handleScreenshot} style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.15)', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </button>
+              {/* Record */}
+              <button onClick={handleToggleRecord} style={{ width: '38px', height: '38px', borderRadius: '50%', background: isRecording ? 'rgba(255,59,59,0.85)' : 'rgba(0,0,0,0.65)', backdropFilter: 'blur(10px)', border: `1px solid ${isRecording ? 'rgba(255,59,59,0.4)' : 'rgba(255,255,255,0.15)'}`, cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {isRecording
+                  ? <svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                  : <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                }
+              </button>
             </div>
+
+            {/* Set Counter — removed, now inside camera controls */}
             
             {/* Rep Counter - Large */}
             <div style={{
