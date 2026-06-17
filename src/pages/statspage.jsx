@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ScoreBadge from '../components/scorebadge';
 import UpgradePrompt from '../components/upgradeprompt';
+import StreakCalendar from '../components/streakcalendar';
 import { usePro } from '../hooks/usepro';
 
 const DEFAULT_STATS = {
@@ -185,6 +186,14 @@ export default function StatsPage() {
             );
           })}
         </div>
+      </div>
+
+      {/* ── Streak Calendar ── */}
+      <div style={{
+        padding: '0 20px 20px',
+        animation: 'fadeUp 0.4s 0.08s cubic-bezier(0.16,1,0.3,1) both',
+      }}>
+        <StreakCalendar history={history} />
       </div>
 
       {/* ── Tools ── */}

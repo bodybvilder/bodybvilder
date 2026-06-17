@@ -6,6 +6,8 @@ import WorkoutTimer from '../components/workouttimer';
 import ShareCard from '../components/sharecard';
 import MuscleDiagram, { MuscleList } from '../components/musclediagram';
 import ExerciseGif from '../components/exercisegif';
+import SmartRestTimer from '../components/resttimer';
+import { usePro } from '../hooks/usepro';
 import { getExerciseById } from '../data/exercises';
 
 // ── SVG ICONS ─────────────────────────────────────────────────────────────
@@ -31,9 +33,10 @@ const CheckIcon = ({ size = 16, color = 'var(--accent)' }) => (
 export default function WorkoutPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { isPro } = usePro();
   const exerciseId = searchParams.get('exercise') || 'pushup';
   const exercise = getExerciseById(exerciseId) || getExerciseById('pushup');
-  
+
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [cameraEnabled, setCameraEnabled] = useState(false);
@@ -44,6 +47,8 @@ export default function WorkoutPage() {
   const [currentSet, setCurrentSet] = useState(1);
   const [showTips, setShowTips] = useState(false);
   const [workoutStartTime, setWorkoutStartTime] = useState(0);
+  const [showRestTimer, setShowRestTimer] = useState(false);
+  const [restDuration, setRestDuration] = useState(60);
 
   // Custom sets & reps — user can override exercise defaults
   const [customSets, setCustomSets] = useState(null);
@@ -153,11 +158,28 @@ export default function WorkoutPage() {
   
   const nextSet = () => {
     if (currentSet < targetSets) {
-      setCurrentSet(currentSet + 1);
-      resetRepCount();
+      // PRO users get smart rest timer between sets
+      if (isPro) {
+        // Auto rest duration based on difficulty
+        const difficulty = exercise?.difficulty || 'beginner';
+        const rest = difficulty === 'advanced' ? 90 : difficulty === 'intermediate' ? 75 : 60;
+        setRestDuration(rest);
+        setShowRestTimer(true);
+        setIsWorkoutActive(false);
+      } else {
+        setCurrentSet(prev => prev + 1);
+        resetRepCount();
+      }
     } else {
       stopWorkout();
     }
+  };
+
+  const handleRestComplete = () => {
+    setShowRestTimer(false);
+    setCurrentSet(prev => prev + 1);
+    resetRepCount();
+    setIsWorkoutActive(true);
   };
   
   return (
@@ -596,6 +618,16 @@ export default function WorkoutPage() {
         </div>
       )}
       
+      {/* Smart Rest Timer (PRO) */}
+      {showRestTimer && (
+        <SmartRestTimer
+          isActive={showRestTimer}
+          duration={restDuration}
+          onComplete={handleRestComplete}
+          onSkip={handleRestComplete}
+        />
+      )}
+
       {/* Share Card */}
       {showShareCard && workoutStats && (
         <ShareCard
