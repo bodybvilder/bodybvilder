@@ -8,14 +8,7 @@ import MuscleDiagram, { MuscleList } from '../components/musclediagram';
 import ExerciseGif from '../components/exercisegif';
 import { getExerciseById } from '../data/exercises';
 
-// ── SVG ICONS (NO EMOJI) ─────────────────────────────────────────────────
-const CameraIcon = ({ size = 48, color = 'var(--accent)' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-    <circle cx="12" cy="13" r="4"/>
-  </svg>
-);
-
+// ── SVG ICONS ─────────────────────────────────────────────────────────────
 const ArrowLeftIcon = ({ size = 20, color = 'currentColor' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M19 12H5M12 19l-7-7 7-7"/>
@@ -26,25 +19,6 @@ const InfoIcon = ({ size = 20, color = 'currentColor' }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="10"/>
     <path d="M12 16v-4M12 8h.01"/>
-  </svg>
-);
-
-const PlayIcon = ({ size = 22, color = 'currentColor' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
-    <polygon points="5 3 19 12 5 21 5 3"/>
-  </svg>
-);
-
-const MinusIcon = ({ size = 16, color = 'currentColor' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round">
-    <line x1="5" y1="12" x2="19" y2="12"/>
-  </svg>
-);
-
-const PlusIcon = ({ size = 16, color = 'currentColor' }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round">
-    <line x1="12" y1="5" x2="12" y2="19"/>
-    <line x1="5" y1="12" x2="19" y2="12"/>
   </svg>
 );
 
@@ -292,6 +266,9 @@ export default function WorkoutPage() {
               position: 'absolute', inset: 0,
               display: 'flex', flexDirection: 'column',
               background: 'var(--bg-0)',
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              WebkitOverflowScrolling: 'touch',
             }}>
               {/* Top — back button */}
               <div style={{ padding: '20px 20px 0', display: 'flex', alignItems: 'center' }}>
@@ -311,7 +288,7 @@ export default function WorkoutPage() {
               </div>
 
               {/* Middle — exercise info */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '24px 24px 16px', textAlign: 'center' }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '20px 20px calc(40px + env(safe-area-inset-bottom))', textAlign: 'center' }}>
                 {/* Camera icon */}
                 <div style={{
                   width: '80px', height: '80px', borderRadius: '50%',

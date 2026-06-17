@@ -68,14 +68,14 @@ export default function AuthPage({ onGuest }) {
             marginBottom: '12px',
             color: 'var(--text-0)',
           }}>
-            Your AI<br />
+            Train smarter.<br />
             <span style={{
               background: 'var(--gradient-accent)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
             }}>
-              Form Coach.
+              Look better.
             </span>
           </h1>
           <p style={{
@@ -85,7 +85,7 @@ export default function AuthPage({ onGuest }) {
             maxWidth: '260px',
             margin: '0 auto',
           }}>
-            Real-time pose analysis, rep counting, and form scoring — right from your browser.
+            AI form coaching, rep counting, bodybuilding pose practice — all from your camera.
           </p>
         </div>
 
@@ -98,7 +98,7 @@ export default function AuthPage({ onGuest }) {
           marginTop: '28px',
           animation: 'fadeUp 0.6s 0.15s cubic-bezier(0.16,1,0.3,1) both',
         }}>
-          {['AI Form Score', 'Rep Counter', '31 Exercises', 'No Equipment'].map(f => (
+          {['AI Form Score', '60+ Exercises', 'Pose Practice', 'Food Scanner'].map(f => (
             <span key={f} style={{
               padding: '6px 14px',
               borderRadius: 'var(--radius-full)',
