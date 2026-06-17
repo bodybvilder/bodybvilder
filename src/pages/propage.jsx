@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { openCheckout } from '../payments/lemonsqueezy';
+import { openPolarCheckout, POLAR_PRICES } from '../payments/polar';
 
 const FEATURE_ROWS = [
   { label: 'AI Form Analysis',         free: true,  pro: true,  core: true },
@@ -47,8 +47,7 @@ export default function ProPage({ user }) {
 
   const handleSubscribe = () => {
     setLoading(true);
-    openCheckout(selectedPlan, user?.email, user?.uid);
-    // Reset loading after short delay (checkout opens in new tab)
+    openPolarCheckout(selectedPlan, user?.email);
     setTimeout(() => setLoading(false), 1500);
   };
 
@@ -191,7 +190,7 @@ export default function ProPage({ user }) {
             }}>
               $4.99
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-3)' }}>per month</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-3)' }}>{POLAR_PRICES.monthly.label}</div>
           </button>
 
           {/* Yearly — recommended */}
@@ -273,7 +272,7 @@ export default function ProPage({ user }) {
           )}
         </button>
         <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-3)', marginTop: '10px' }}>
-          {selectedPlan === 'yearly' ? '$29.99/year' : '$4.99/month'} · Cancel anytime · No surprise charges
+          {selectedPlan === 'yearly' ? POLAR_PRICES.yearly.label : POLAR_PRICES.monthly.label} · Cancel anytime · Powered by Polar
         </p>
       </div>
 

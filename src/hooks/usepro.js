@@ -1,41 +1,41 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getProStatus } from '../payments/lemonsqueezy';
+import { getProStatus } from '../payments/polar';
 
 /**
  * Hook to get PRO status and feature gates
  * Usage: const { isPro, canUse } = usePro();
- *        canUse('advanced_stats') → true/false
  */
 export function usePro() {
   const [proData, setProData] = useState(() => getProStatus());
 
   useEffect(() => {
-    // Re-check when tab comes back into focus (user may have just subscribed)
+    // Re-check when tab gains focus (user may have just subscribed)
     const handleFocus = () => setProData(getProStatus());
+    const handleUpdate = () => setProData(getProStatus());
+
     window.addEventListener('focus', handleFocus);
-    // Also listen for custom event from webhook sync
-    const handleProUpdate = () => setProData(getProStatus());
-    window.addEventListener('bv-pro-updated', handleProUpdate);
+    window.addEventListener('bv-pro-updated', handleUpdate);
     return () => {
       window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('bv-pro-updated', handleProUpdate);
+      window.removeEventListener('bv-pro-updated', handleUpdate);
     };
   }, []);
 
   const canUse = useCallback((feature) => {
     if (proData.isPro) return true;
-    // Features available to free users
-    const freeFeatures = new Set([
-      'ai_form',           // core AI coaching — always free
-      'rep_counter',       // rep counting — always free
-      'basic_stats',       // weekly chart + totals
-      'exercises_all',     // all 31 exercises
-      'streak',            // streak tracking
-      'share_card',        // sharing workout
-      'dark_theme',        // default dark theme only
-      'history_10',        // last 10 workouts
+    // Free tier features
+    const FREE = new Set([
+      'ai_form',
+      'rep_counter',
+      'basic_stats',
+      'exercises_all',
+      'streak',
+      'share_card',
+      'dark_theme',
+      'history_10',
+      'ffmi',        // FFMI always free
     ]);
-    return freeFeatures.has(feature);
+    return FREE.has(feature);
   }, [proData.isPro]);
 
   return {
@@ -46,12 +46,10 @@ export function usePro() {
   };
 }
 
-/**
- * Feature definitions — used for gating UI and showing upgrade prompts
- */
 export const PRO_FEATURES = {
   advanced_stats:    { label: 'Form Score Trends',    desc: 'Track improvement over time per exercise' },
   unlimited_history: { label: 'Full Workout History', desc: 'All your sessions, forever' },
+  food_scan:         { label: 'Food Scanner',          desc: 'AI macro analysis from photo' },
   themes:            { label: 'All Themes',            desc: 'Light, Cyber, Sunset + exclusive drops' },
   program_builder:   { label: 'Program Builder',       desc: 'Build & save custom workout routines' },
   rest_timer:        { label: 'Smart Rest Timer',      desc: 'Auto rest timer between sets' },

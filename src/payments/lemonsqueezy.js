@@ -15,9 +15,9 @@
 
 // ─── REPLACE WITH YOUR ACTUAL IDs FROM LEMON SQUEEZY DASHBOARD ────────────
 export const LS_CONFIG = {
-  storeSlug: 'bodybvilder',         // your store slug
-  monthlyVariantId: 'YOUR_MONTHLY_VARIANT_ID',
-  yearlyVariantId: 'YOUR_YEARLY_VARIANT_ID',
+  storeSlug: 'bodybvilder',
+  monthlyVariantId: 'affacc81-be04-4be4-836a-0311610f499a',
+  yearlyVariantId: '7d49ad55-c0b2-4ffb-9716-a440abe380cd',
   checkoutBaseUrl: 'https://bodybvilder.lemonsqueezy.com/checkout/buy/',
 };
 
