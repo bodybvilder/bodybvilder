@@ -91,45 +91,60 @@ const FLIP_SPEED = {
 const DEFAULT_SPEED = 800;
 
 const frameCache = {};
+// Preload with timeout helper
+function loadImg(src, timeoutMs = 4000) {
+  if (frameCache[src]) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const t = setTimeout(() => reject(new Error('timeout')), timeoutMs);
+    img.onload  = () => { clearTimeout(t); frameCache[src] = true; resolve(); };
+    img.onerror = () => { clearTimeout(t); reject(); };
+    img.src = src;
+  });
+}
 
 export default function ExerciseGif({ exerciseId, size = 160 }) {
-  const [frame, setFrame]     = useState(0);
-  const [loaded, setLoaded]   = useState([false, false]);
-  const [error, setError]     = useState(false);
-  const intervalRef           = useRef(null);
+  const [frame, setFrame]       = useState(0);
+  const [frame0Ready, setF0]    = useState(false);
+  const [frame1Ready, setF1]    = useState(false);
+  const [error, setError]       = useState(false);
+  const intervalRef             = useRef(null);
 
-  const dbId    = DB_ID_MAP[exerciseId];
-  const isPose  = exerciseId?.startsWith('pose-');
-  const speed   = FLIP_SPEED[exerciseId] || DEFAULT_SPEED;
+  const dbId   = DB_ID_MAP[exerciseId];
+  const isPose = exerciseId?.startsWith('pose-');
+  const speed  = FLIP_SPEED[exerciseId] || DEFAULT_SPEED;
 
-  // Preload both frames
   useEffect(() => {
     if (!dbId || isPose) return;
-    setLoaded([false, false]);
-    setError(false);
-    setFrame(0);
+    setF0(false); setF1(false); setError(false); setFrame(0);
+    clearInterval(intervalRef.current);
 
-    const loadFrame = (f) => new Promise((resolve, reject) => {
-      if (frameCache[`${dbId}-${f}`]) { resolve(); return; }
-      const img = new Image();
-      img.onload  = () => { frameCache[`${dbId}-${f}`] = true; resolve(); };
-      img.onerror = () => reject();
-      img.src = imgUrl(dbId, f);
-    });
+    const url0 = imgUrl(dbId, 0);
+    const url1 = imgUrl(dbId, 1);
 
-    Promise.all([loadFrame(0), loadFrame(1)])
-      .then(() => setLoaded([true, true]))
+    // Frame 0: show immediately when ready
+    loadImg(url0, 4000)
+      .then(() => setF0(true))
       .catch(() => setError(true));
+
+    // Frame 1: load silently in background
+    loadImg(url1, 6000)
+      .then(() => setF1(true))
+      .catch(() => {}); // frame 1 failing is fine, just won't animate
   }, [dbId, isPose]);
 
-  // Flip animation loop
+  // Start flip only after frame 0 is ready (frame 1 optional)
   useEffect(() => {
-    if (!loaded[0] || !loaded[1]) return;
-    intervalRef.current = setInterval(() => setFrame(f => f === 0 ? 1 : 0), speed);
+    clearInterval(intervalRef.current);
+    if (!frame0Ready) return;
+    // If we have both frames, start flipping
+    if (frame1Ready) {
+      intervalRef.current = setInterval(() => setFrame(f => f === 0 ? 1 : 0), speed);
+    }
     return () => clearInterval(intervalRef.current);
-  }, [loaded, speed]);
+  }, [frame0Ready, frame1Ready, speed]);
 
-  // ── Pose: show static pose icon ──────────────────────────────────────
+  // ── Pose icon ────────────────────────────────────────────────────────
   if (isPose) {
     return (
       <div style={containerStyle(size)}>
@@ -145,30 +160,55 @@ export default function ExerciseGif({ exerciseId, size = 160 }) {
     );
   }
 
-  // ── No mapping ────────────────────────────────────────────────────────
-  if (!dbId) return <FallbackAnim size={size} exerciseId={exerciseId} />;
+  // ── No mapping / error ───────────────────────────────────────────────
+  if (!dbId || error) return <FallbackAnim size={size} exerciseId={exerciseId} />;
 
-  // ── Loading ───────────────────────────────────────────────────────────
-  if (!loaded[0]) {
+  // ── Skeleton shimmer while frame 0 loads ─────────────────────────────
+  if (!frame0Ready) {
     return (
       <div style={containerStyle(size)}>
-        <div style={{ width: 24, height: 24, border: '2.5px solid var(--bg-3)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }}/>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <style>{`
+          @keyframes bv-shimmer {
+            0%   { background-position: -200% 0; }
+            100% { background-position:  200% 0; }
+          }
+        `}</style>
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(90deg, var(--bg-2) 25%, var(--bg-3) 50%, var(--bg-2) 75%)',
+          backgroundSize: '200% 100%',
+          animation: 'bv-shimmer 1.4s ease-in-out infinite',
+          borderRadius: 'inherit',
+        }}/>
+        {/* Silhouette hint */}
+        <svg width={size * 0.3} height={size * 0.3} viewBox="0 0 24 24" fill="none"
+          stroke="var(--bg-3)" strokeWidth="1.5" strokeLinecap="round"
+          style={{ position: 'relative', zIndex: 1, opacity: 0.5 }}>
+          <circle cx="12" cy="5" r="3"/>
+          <path d="M12 8v8M8 10l4-2 4 2M10 20l2-4 2 4"/>
+        </svg>
       </div>
     );
   }
 
-  // ── Error fallback ────────────────────────────────────────────────────
-  if (error) return <FallbackAnim size={size} exerciseId={exerciseId} />;
-
+  // ── Ready: show frame 0 immediately, animate when frame 1 arrives ─────
   return (
     <div style={containerStyle(size)}>
-      {/* frame 0 */}
-      <img src={imgUrl(dbId, 0)} alt="" style={{ ...imgStyle, opacity: frame === 0 ? 1 : 0 }} />
-      {/* frame 1 */}
-      <img src={imgUrl(dbId, 1)} alt="" style={{ ...imgStyle, opacity: frame === 1 ? 1 : 0 }} />
-      {/* subtle accent border on active */}
-      <div style={{ position: 'absolute', inset: 0, borderRadius: 'inherit', border: '1px solid rgba(200,255,0,0.15)', pointerEvents: 'none' }}/>
+      {/* frame 0 always visible once loaded */}
+      <img
+        src={imgUrl(dbId, 0)}
+        alt=""
+        style={{ ...imgStyle, opacity: frame === 0 || !frame1Ready ? 1 : 0 }}
+      />
+      {/* frame 1 only shown once loaded */}
+      {frame1Ready && (
+        <img
+          src={imgUrl(dbId, 1)}
+          alt=""
+          style={{ ...imgStyle, opacity: frame === 1 ? 1 : 0 }}
+        />
+      )}
+      <div style={{ position: 'absolute', inset: 0, borderRadius: 'inherit', border: '1px solid rgba(200,255,0,0.12)', pointerEvents: 'none' }}/>
     </div>
   );
 }
