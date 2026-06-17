@@ -45,10 +45,37 @@ export default function ProPage({ user }) {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Creator code state
+  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [codeInput, setCodeInput] = useState('');
+  const [discount, setDiscount] = useState(null); // { label, code, amount, type }
+  const [codeLoading, setCodeLoading] = useState(false);
+  const [codeError, setCodeError] = useState('');
+
   const handleSubscribe = () => {
     setLoading(true);
-    openPolarCheckout(selectedPlan, user?.email);
+    openPolarCheckout(selectedPlan, user?.email, discount?.code);
     setTimeout(() => setLoading(false), 1500);
+  };
+
+  const applyCode = async () => {
+    if (!codeInput.trim()) return;
+    setCodeLoading(true);
+    setCodeError('');
+    setDiscount(null);
+    try {
+      const res = await fetch(`/api/validate-discount?code=${encodeURIComponent(codeInput.trim())}`);
+      const data = await res.json();
+      if (!res.ok || !data.valid) {
+        setCodeError(data.error || 'Invalid code');
+      } else {
+        setDiscount(data);
+        setCodeError('');
+      }
+    } catch {
+      setCodeError('Could not verify code. Try again.');
+    }
+    setCodeLoading(false);
   };
 
   return (
@@ -233,6 +260,98 @@ export default function ProPage({ user }) {
             <div style={{ fontSize: '11px', color: 'var(--text-3)' }}>$2.50 / month</div>
           </button>
         </div>
+      </div>
+
+      {/* Creator Code */}
+      <div style={{ padding: '0 16px 16px', animation: 'fadeUp 0.5s 0.22s cubic-bezier(0.16,1,0.3,1) both' }}>
+        {!showCodeInput && !discount ? (
+          <button
+            onClick={() => setShowCodeInput(true)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: '13px', color: 'var(--text-3)', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', gap: '6px',
+              padding: '4px 0',
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h6"/>
+              <path d="M15 3h6v6"/><path d="M10 14L21 3"/>
+            </svg>
+            Have a creator code?
+          </button>
+        ) : discount ? (
+          /* Applied — show success */
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '10px',
+            padding: '12px 14px', borderRadius: '12px',
+            background: 'rgba(200,255,0,0.08)',
+            border: '1px solid rgba(200,255,0,0.25)',
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent)' }}>
+                {discount.code} — {discount.label}
+              </span>
+            </div>
+            <button
+              onClick={() => { setDiscount(null); setCodeInput(''); setShowCodeInput(false); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: '2px' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        ) : (
+          /* Input field */
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              type="text"
+              placeholder="Creator code"
+              value={codeInput}
+              onChange={e => { setCodeInput(e.target.value.toUpperCase()); setCodeError(''); }}
+              onKeyDown={e => e.key === 'Enter' && applyCode()}
+              style={{
+                flex: 1, padding: '11px 14px',
+                borderRadius: '12px',
+                border: `1.5px solid ${codeError ? 'var(--red)' : 'var(--border)'}`,
+                background: 'var(--bg-1)', color: 'var(--text-0)',
+                fontSize: '14px', fontWeight: 600, fontFamily: 'inherit',
+                outline: 'none', letterSpacing: '0.05em',
+                transition: 'border-color 0.15s ease',
+              }}
+              onFocus={e => { if (!codeError) e.target.style.borderColor = 'var(--accent)'; }}
+              onBlur={e => { if (!codeError) e.target.style.borderColor = 'var(--border)'; }}
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+            <button
+              onClick={applyCode}
+              disabled={!codeInput.trim() || codeLoading}
+              style={{
+                padding: '11px 16px', borderRadius: '12px', border: 'none',
+                background: codeInput.trim() ? 'var(--bg-3)' : 'var(--bg-2)',
+                color: codeInput.trim() ? 'var(--text-0)' : 'var(--text-3)',
+                fontSize: '13px', fontWeight: 700, cursor: codeInput.trim() ? 'pointer' : 'not-allowed',
+                fontFamily: 'inherit', flexShrink: 0,
+                display: 'flex', alignItems: 'center', gap: '6px',
+              }}
+            >
+              {codeLoading ? (
+                <div style={{ width: '14px', height: '14px', border: '2px solid var(--text-3)', borderTopColor: 'var(--text-0)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+              ) : 'Apply'}
+            </button>
+          </div>
+        )}
+        {codeError && (
+          <p style={{ fontSize: '12px', color: 'var(--red)', marginTop: '6px', paddingLeft: '2px' }}>
+            {codeError}
+          </p>
+        )}
       </div>
 
       {/* CTA */}

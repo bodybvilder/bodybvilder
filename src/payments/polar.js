@@ -21,19 +21,22 @@ export const POLAR_PRICES = {
  * Open Polar checkout — uses the pre-configured checkout link
  * Both Monthly and Yearly products are selectable at checkout
  */
-export function openPolarCheckout(plan, userEmail) {
+export function openPolarCheckout(plan, userEmail, discountCode) {
   const url = new URL(POLAR_CONFIG.checkoutLink);
 
-  // Pre-select the plan if possible
   if (plan === 'yearly') {
     url.searchParams.set('products', POLAR_CONFIG.yearlyProductId);
   } else {
     url.searchParams.set('products', POLAR_CONFIG.monthlyProductId);
   }
 
-  // Pre-fill email
   if (userEmail) {
     url.searchParams.set('customer_email', userEmail);
+  }
+
+  // Apply creator/discount code if provided
+  if (discountCode) {
+    url.searchParams.set('discount_code', discountCode);
   }
 
   window.open(url.toString(), '_blank', 'noopener,noreferrer');
