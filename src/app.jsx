@@ -11,6 +11,8 @@ import FFMIPage from './pages/ffmipage';
 import FoodScanPage from './pages/foodscanpage';
 import PlanBuilderPage from './pages/planbuilderpage';
 import TrainerPage from './pages/trainerpage';
+import MealPlanPage from './pages/mealplanpage';
+import MeasurementsPage from './pages/measurementspage';
 import BottomNav from './components/bottomnav';
 import SplashScreen from './components/splashscreen';
 import Logo from './components/logo';
@@ -49,16 +51,26 @@ export default function App() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const unsub = onAuthChange((u) => {
-      if (u) {
-        setUser(u);
-        setAuthState('authenticated');
-      } else {
-        // Keep guest state if set
-        setAuthState(prev => prev === 'guest' ? 'guest' : 'none');
-      }
-    });
-    return unsub;
+    let unsub = () => {};
+    try {
+      unsub = onAuthChange((u) => {
+        if (u) {
+          setUser(u);
+          setAuthState('authenticated');
+        } else {
+          setAuthState(prev => prev === 'guest' ? 'guest' : 'none');
+        }
+      });
+    } catch (err) {
+      // Firebase init failed (e.g. unauthorized domain) — fall through to auth page
+      console.warn('Firebase auth init error:', err);
+      setAuthState('none');
+    }
+    // Safety: if Firebase never calls back within 5s, stop loading
+    const timeout = setTimeout(() => {
+      setAuthState(prev => prev === 'loading' ? 'none' : prev);
+    }, 5000);
+    return () => { unsub(); clearTimeout(timeout); };
   }, []);
 
   const handleGuest = () => setAuthState('guest');
@@ -134,6 +146,8 @@ function MainApp({ user, isGuest }) {
           <Route path="/trainer" element={<TrainerPage user={user} />} />
           <Route path="/profile" element={<ProfilePage user={user} isGuest={isGuest} />} />
           <Route path="/pro" element={<ProPage user={user} />} />
+          <Route path="/meal" element={<MealPlanPage />} />
+          <Route path="/measurements" element={<MeasurementsPage />} />
         </Routes>
         <div className="app-bottom-nav">
           <BottomNav />
@@ -207,7 +221,7 @@ function DesktopSidebar({ user, isGuest }) {
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
         {navItems.map(item => {
           const active = location.pathname === item.path ||
-            (item.path === '/stats' && ['/ffmi', '/food', '/plan'].includes(location.pathname));
+            (item.path === '/stats' && ['/ffmi', '/food', '/plan', '/meal', '/measurements'].includes(location.pathname));
           return (
             <button
               key={item.path}

@@ -89,9 +89,8 @@ export default function BottomNav() {
       zIndex: 100,
     }}>
       {NAV_ITEMS.map(item => {
-        // Stats tab also active for /ffmi, /food, /plan
         const active = location.pathname === item.path ||
-          (item.path === '/stats' && ['/ffmi', '/food', '/plan'].includes(location.pathname));
+          (item.path === '/stats' && ['/ffmi', '/food', '/plan', '/meal', '/measurements'].includes(location.pathname));
         return (
           <button
             key={item.path}

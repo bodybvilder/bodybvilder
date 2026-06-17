@@ -5,6 +5,91 @@ import UpgradePrompt from '../components/upgradeprompt';
 import StreakCalendar from '../components/streakcalendar';
 import { usePro } from '../hooks/usepro';
 
+// ── 1RM Calculator (Epley + Brzycki average) ─────────────────────────────
+function calc1RM(weightKg, reps) {
+  if (!weightKg || !reps || reps < 1) return 0;
+  if (reps === 1) return weightKg;
+  const epley   = weightKg * (1 + reps / 30);
+  const brzycki = weightKg * (36 / (37 - reps));
+  return Math.round((epley + brzycki) / 2);
+}
+
+function OneRMCalculator() {
+  const [weight, setWeight] = useState('');
+  const [reps,   setReps]   = useState('');
+  const [unit,   setUnit]   = useState('kg'); // kg | lb
+  const result = calc1RM(parseFloat(weight), parseInt(reps));
+  const displayResult = unit === 'lb' && result ? Math.round(result * 2.205) : result;
+  const displayWeight = weight ? (unit === 'lb' ? Math.round(parseFloat(weight) * 2.205) : parseFloat(weight)) : '';
+
+  // Percentage table: 100%→50%
+  const PCTS = [100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50];
+
+  return (
+    <div style={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '20px', padding: '20px', marginBottom: '20px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <div>
+          <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-0)', letterSpacing: '-0.02em', marginBottom: '2px' }}>1RM Calculator</h3>
+          <p style={{ fontSize: '11px', color: 'var(--text-3)' }}>Epley + Brzycki formula</p>
+        </div>
+        {/* kg / lb toggle */}
+        <div style={{ display: 'flex', background: 'var(--bg-2)', borderRadius: '99px', padding: '3px', gap: '2px' }}>
+          {['kg','lb'].map(u => (
+            <button key={u} onClick={() => setUnit(u)}
+              style={{ padding: '5px 12px', borderRadius: '99px', border: 'none', background: unit === u ? 'var(--accent)' : 'transparent', color: unit === u ? '#000' : 'var(--text-3)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s ease' }}>
+              {u}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Inputs */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+        {[
+          { label: `Weight (${unit})`, val: weight, set: setWeight, placeholder: unit === 'kg' ? '100' : '225' },
+          { label: 'Reps',            val: reps,   set: setReps,   placeholder: '5' },
+        ].map(f => (
+          <div key={f.label} style={{ flex: 1 }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-3)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '6px' }}>{f.label}</div>
+            <input
+              type="number" inputMode="decimal" min="0" value={f.val} placeholder={f.placeholder}
+              onChange={e => f.set(e.target.value)}
+              style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--bg-2)', color: 'var(--text-0)', fontSize: '18px', fontWeight: 800, outline: 'none', fontFamily: 'inherit', letterSpacing: '-0.02em', boxSizing: 'border-box', textAlign: 'center' }}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Result */}
+      {result > 0 && (
+        <>
+          <div style={{ background: 'var(--accent-dim)', border: '1px solid rgba(200,255,0,0.2)', borderRadius: '14px', padding: '14px', textAlign: 'center', marginBottom: '14px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-2)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '4px' }}>Estimated 1RM</div>
+            <div style={{ fontSize: '36px', fontWeight: 900, color: 'var(--accent)', letterSpacing: '-0.04em', lineHeight: 1 }}>
+              {displayResult} <span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-2)' }}>{unit}</span>
+            </div>
+          </div>
+
+          {/* Percentage table */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+            {PCTS.map(pct => {
+              const val = unit === 'lb' ? Math.round(result * 2.205 * pct / 100) : Math.round(result * pct / 100);
+              const isMax = pct === 100;
+              return (
+                <div key={pct} style={{ background: isMax ? 'var(--accent-dim)' : 'var(--bg-2)', borderRadius: '10px', padding: '8px 6px', textAlign: 'center', border: isMax ? '1px solid rgba(200,255,0,0.2)' : '1px solid transparent' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 800, color: isMax ? 'var(--accent)' : 'var(--text-0)', letterSpacing: '-0.02em' }}>{val}</div>
+                  <div style={{ fontSize: '9px', color: 'var(--text-3)', fontWeight: 700, marginTop: '1px' }}>{pct}%</div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 const DEFAULT_STATS = {
   workoutsCompleted: 0, streak: 0,
   totalReps: 0, totalTime: 0,
@@ -196,20 +281,34 @@ export default function StatsPage() {
         <StreakCalendar history={history} />
       </div>
 
+      {/* ── 1RM Calculator ── */}
+      <div style={{ padding: '0 20px 4px', animation: 'fadeUp 0.4s 0.1s cubic-bezier(0.16,1,0.3,1) both' }}>
+        <OneRMCalculator />
+      </div>
+
       {/* ── Tools ── */}
       <div style={{ padding: '0 20px 20px', animation: 'fadeUp 0.4s 0.12s cubic-bezier(0.16,1,0.3,1) both' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-0)', letterSpacing: '-0.02em', marginBottom: '12px' }}>
           Tools
         </h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-          <button onClick={() => navigate('/ffmi')} style={{
-            background: 'var(--bg-1)', border: '1px solid var(--border)',
-            borderRadius: '16px', padding: '16px', cursor: 'pointer', textAlign: 'left',
-            fontFamily: 'inherit', transition: 'border-color 0.15s ease',
-          }}
+
+          {/* Measurements */}
+          <button onClick={() => navigate('/measurements')} style={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', transition: 'border-color 0.15s ease' }}
             onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(200,255,0,0.3)'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-          >
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round">
+                <path d="M3 3h18v18H3z"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
+              </svg>
+            </div>
+            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-0)', marginBottom: '2px' }}>Measurements</div>
+            <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>Body size tracker</div>
+          </button>
+
+          <button onClick={() => navigate('/ffmi')} style={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', transition: 'border-color 0.15s ease' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(200,255,0,0.3)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
             <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round">
                 <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -219,14 +318,9 @@ export default function StatsPage() {
             <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>Natural limit checker</div>
           </button>
 
-          <button onClick={() => navigate('/food')} style={{
-            background: 'var(--bg-1)', border: '1px solid var(--border)',
-            borderRadius: '16px', padding: '16px', cursor: 'pointer', textAlign: 'left',
-            fontFamily: 'inherit', transition: 'border-color 0.15s ease',
-          }}
+          <button onClick={() => navigate('/food')} style={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', transition: 'border-color 0.15s ease' }}
             onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(200,255,0,0.3)'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-          >
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
             <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round">
                 <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/>
@@ -236,14 +330,23 @@ export default function StatsPage() {
             <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>AI macro from photo</div>
           </button>
 
-          <button onClick={() => navigate('/plan')} style={{
-            background: 'var(--bg-1)', border: '1px solid rgba(200,255,0,0.15)',
-            borderRadius: '16px', padding: '16px', cursor: 'pointer', textAlign: 'left',
-            fontFamily: 'inherit', gridColumn: '1 / -1', transition: 'border-color 0.15s ease',
-          }}
+          <button onClick={() => navigate('/meal')} style={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', transition: 'border-color 0.15s ease' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(200,255,0,0.3)'}
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '10px' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12h8M12 8v8"/>
+              </svg>
+            </div>
+            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-0)', marginBottom: '2px' }}>
+              Meal Plan <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--accent)', background: 'var(--accent-dim)', padding: '1px 5px', borderRadius: '99px' }}>PRO</span>
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>AI nutrition planner</div>
+          </button>
+
+          <button onClick={() => navigate('/plan')} style={{ background: 'var(--bg-1)', border: '1px solid rgba(200,255,0,0.15)', borderRadius: '16px', padding: '16px', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', gridColumn: '1 / -1', transition: 'border-color 0.15s ease' }}
             onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(200,255,0,0.35)'}
-            onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(200,255,0,0.15)'}
-          >
+            onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(200,255,0,0.15)'}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round">
