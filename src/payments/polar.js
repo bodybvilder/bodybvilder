@@ -8,6 +8,8 @@ export const POLAR_CONFIG = {
   organizationSlug: 'bodybvilder',
   monthlyProductId: 'affacc81-be04-4be4-836a-0311610f499a',
   yearlyProductId:  '7d49ad55-c0b2-4ffb-9716-a440abe380cd',
+  // Single checkout link — user can switch between Monthly/Yearly at checkout
+  checkoutLink: 'https://buy.polar.sh/polar_cl_LqVGhA4jy3lTni2SEs2toWjNccv8RlGcGINpH0akIuk',
 };
 
 export const POLAR_PRICES = {
@@ -16,18 +18,20 @@ export const POLAR_PRICES = {
 };
 
 /**
- * Open Polar checkout in a new tab
- * Polar hosted checkout handles everything — taxes, payment, receipts
+ * Open Polar checkout — uses the pre-configured checkout link
+ * Both Monthly and Yearly products are selectable at checkout
  */
 export function openPolarCheckout(plan, userEmail) {
-  const productId = plan === 'yearly'
-    ? POLAR_CONFIG.yearlyProductId
-    : POLAR_CONFIG.monthlyProductId;
+  const url = new URL(POLAR_CONFIG.checkoutLink);
 
-  // Polar checkout URL format
-  const url = new URL(`https://buy.polar.sh/bodybvilder/${productId}`);
+  // Pre-select the plan if possible
+  if (plan === 'yearly') {
+    url.searchParams.set('products', POLAR_CONFIG.yearlyProductId);
+  } else {
+    url.searchParams.set('products', POLAR_CONFIG.monthlyProductId);
+  }
 
-  // Pre-fill customer email if logged in
+  // Pre-fill email
   if (userEmail) {
     url.searchParams.set('customer_email', userEmail);
   }
