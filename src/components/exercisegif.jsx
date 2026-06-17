@@ -9,73 +9,72 @@ import React, { useState, useEffect, useRef } from 'react';
 
 const CDN = 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises';
 
-// Map our exercise IDs → free-exercise-db folder names
-// Source: https://github.com/yuhonas/free-exercise-db/tree/main/exercises
+// Map our exercise IDs → free-exercise-db folder names (verified against DB)
 const DB_ID_MAP = {
   // ── Chest / Push ──────────────────────────────────────────────────────
-  'pushup':               'Pushup',
+  'pushup':               'Pushups',
   'incline-pushup':       'Incline_Push-Up',
   'decline-pushup':       'Decline_Push-Up',
   'diamond-pushup':       'Close-Grip_Push-Up_off_of_a_Dumbbell',
-  'wide-pushup':          'Wide-Grip_Barbell_Bench_Press',
+  'wide-pushup':          'Pushups_Close_and_Wide_Hand_Positions',
   'pike-pushup':          'Pike_Push-Up',
   'incline-dumbbell-press': 'Dumbbell_Incline_Alternating_Press',
   'dumbbell-fly':         'Dumbbell_Flyes',
-  'cable-fly':            'Cable_Crossovers',
+  'cable-fly':            'Cable_Crossover',
 
   // ── Back / Pull ───────────────────────────────────────────────────────
-  'pullup':               'Pull-Up',
+  'pullup':               'Pullups',
   'chinup':               'Chin-Up',
   'dead-hang':            'Hanging_Bar_Good_Morning',
-  'bodyweight-row':       'Inverted_Row_with_Straddle',
+  'bodyweight-row':       'Inverted_Row',
   'barbell-row':          'Barbell_Bent_Over_Row',
   'dumbbell-row':         'Dumbbell_Bent_Over_Row',
-  'lat-pulldown':         'Cable_Lat_Pulldown',
+  'lat-pulldown':         'Close-Grip_Front_Lat_Pulldown',
   'seated-cable-row':     'Cable_Seated_Row',
   'superman':             'Superman',
   'barbell-deadlift':     'Barbell_Deadlift',
   'romanian-deadlift':    'Romanian_Deadlift',
 
   // ── Shoulders ─────────────────────────────────────────────────────────
-  'lateral-raise':        'Dumbbell_Lateral_Raise',
-  'front-raise':          'Dumbbell_Front_Raise',
-  'overhead-press':       'Barbell_Standing_Military_Press',
+  'lateral-raise':        'Dumbbell_Lying_One-Arm_Rear_Lateral_Raise',
+  'front-raise':          'Side_Laterals_to_Front_Raise',
+  'overhead-press':       'Seated_Barbell_Military_Press',
   'arnold-press':         'Arnold_Dumbbell_Press',
-  'face-pull':            'Cable_Face_Pull',
-  'cable-lateral-raise':  'Cable_Lateral_Raise',
-  'shoulder-tap':         'Push-Up_to_Side_Plank',
+  'face-pull':            'Face_Pull',
+  'cable-lateral-raise':  'Cable_Seated_Lateral_Raise',
+  'shoulder-tap':         'Push_Up_to_Side_Plank',
 
   // ── Triceps ───────────────────────────────────────────────────────────
-  'dip':                  'Triceps_Dip',
+  'dip':                  'Dips_-_Chest_Version',
   'bench-dip':            'Bench_Dips',
-  'tricep-extension':     'Dumbbell_Tricep_Kickback',
-  'skull-crusher':        'Barbell_Skullcrusher',
+  'tricep-extension':     'Cable_Lying_Triceps_Extension',
+  'skull-crusher':        'EZ-Bar_Skullcrusher',
   'tricep-pushdown':      'Triceps_Pushdown',
-  'cable-kickback':       'Cable_Kickback',
+  'cable-kickback':       'One-Legged_Cable_Kickback',
 
   // ── Arms / Biceps ─────────────────────────────────────────────────────
   'bicep-curl':           'Dumbbell_Bicep_Curl',
   'hammer-curl':          'Hammer_Curls',
-  'concentration-curl':   'Dumbbell_Concentration_Curl',
+  'concentration-curl':   'Concentration_Curls',
   'barbell-curl':         'Barbell_Curl',
   'cable-curl':           'Cable_Curl',
 
   // ── Legs ──────────────────────────────────────────────────────────────
   'squat':                'Bodyweight_Squat',
   'lunge':                'Barbell_Lunge',
-  'glute-bridge':         'Glute_Bridge',
-  'jump-squat':           'Jump_Squat',
-  'single-leg-squat':     'Pistol_Squat',
-  'calf-raise':           'Calf_Raise',
+  'glute-bridge':         'Barbell_Glute_Bridge',
+  'jump-squat':           'Freehand_Jump_Squat',
+  'single-leg-squat':     'Kettlebell_Pistol_Squat',
+  'calf-raise':           'Calf_Raise_On_A_Dumbbell',
   'barbell-squat':        'Barbell_Full_Squat',
   'bulgarian-split-squat':'Barbell_Bulgarian_Split_Squat',
 
   // ── Core ──────────────────────────────────────────────────────────────
   'plank':                'Plank',
-  'hollow-body':          'L-Sit_on_Floor',
+  'hollow-body':          'Seated_Ab_Crunch',
   'crunch':               'Crunch',
-  'mountain-climber':     'Mountain_Climber_-_Alternating',
-  'leg-raise':            'Lying_Leg_Raise',
+  'mountain-climber':     'Mountain_Climbers',
+  'leg-raise':            'Flat_Bench_Lying_Leg_Raise',
   'russian-twist':        'Russian_Twist',
 };
 
