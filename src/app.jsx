@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import HomePage from './pages/homepage';
 import WorkoutPage from './pages/workoutpage';
@@ -14,6 +14,33 @@ import BottomNav from './components/bottomnav';
 import SplashScreen from './components/splashscreen';
 import Logo from './components/logo';
 import { onAuthChange } from './firebase';
+
+// ── Error Boundary — catches JS errors, shows friendly message instead of blank ──
+class ErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, info) { console.error('App error:', error, info); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ height: '100dvh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px', textAlign: 'center' }}>
+          <div style={{ fontSize: '32px', marginBottom: '16px' }}>⚠️</div>
+          <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>Something went wrong</h2>
+          <p style={{ fontSize: '14px', color: '#888', marginBottom: '24px' }}>
+            {this.state.error?.message || 'Unexpected error'}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{ padding: '12px 24px', borderRadius: '12px', border: 'none', background: '#C8FF00', color: '#000', fontSize: '14px', fontWeight: 700, cursor: 'pointer' }}
+          >
+            Reload App
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function App() {
   const [splashDone, setSplashDone] = useState(false);
@@ -64,7 +91,11 @@ export default function App() {
   }
 
   // Logged in (google or guest) → show main app
-  return <MainApp user={user} isGuest={authState === 'guest'} />;
+  return (
+    <ErrorBoundary>
+      <MainApp user={user} isGuest={authState === 'guest'} />
+    </ErrorBoundary>
+  );
 }
 
 function MainApp({ user, isGuest }) {
