@@ -121,13 +121,19 @@ export default async function handler(req, res) {
         ? 'yearly'
         : 'monthly';
 
-      // Update Firestore
+      // Update Firestore — match existing user document structure
       await db.collection('users').doc(uid).set({
-        isPro,
-        plan: isPro ? plan : null,
-        proExpiresAt: currentPeriodEnd || null,
-        polarSubscriptionId: sub.id,
-        updatedAt: new Date().toISOString(),
+        subscription: {
+          status: isPro ? 'active' : 'inactive',
+          tier: isPro ? 'pro' : 'free',
+          plan: isPro ? plan : null,
+          expiresAt: currentPeriodEnd
+            ? new Date(currentPeriodEnd * 1000)
+            : null,
+          polarSubscriptionId: sub.id,
+          updatedAt: new Date(),
+        },
+        lastActive: new Date(),
       }, { merge: true });
 
       console.log(`User ${uid} PRO status → ${isPro} (${plan})`);
@@ -150,10 +156,14 @@ export default async function handler(req, res) {
       }
 
       await db.collection('users').doc(uid).set({
-        isPro: false,
-        plan: null,
-        proExpiresAt: null,
-        updatedAt: new Date().toISOString(),
+        subscription: {
+          status: 'inactive',
+          tier: 'free',
+          plan: null,
+          expiresAt: null,
+          updatedAt: new Date(),
+        },
+        lastActive: new Date(),
       }, { merge: true });
 
       console.log(`User ${uid} PRO revoked`);

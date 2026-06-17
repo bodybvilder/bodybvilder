@@ -1,29 +1,60 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getProStatus } from '../payments/polar';
+import { getProStatus, setProStatus } from '../payments/polar';
+import { auth } from '../firebase';
+import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
 
 /**
- * Hook to get PRO status and feature gates
- * Usage: const { isPro, canUse } = usePro();
+ * Hook to get PRO status — synced from Firestore when logged in,
+ * falls back to localStorage for guest mode.
  */
 export function usePro() {
   const [proData, setProData] = useState(() => getProStatus());
 
   useEffect(() => {
-    // Re-check when tab gains focus (user may have just subscribed)
-    const handleFocus = () => setProData(getProStatus());
-    const handleUpdate = () => setProData(getProStatus());
+    const user = auth.currentUser;
 
-    window.addEventListener('focus', handleFocus);
-    window.addEventListener('bv-pro-updated', handleUpdate);
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-      window.removeEventListener('bv-pro-updated', handleUpdate);
-    };
+    if (!user) {
+      // Guest mode — use localStorage only
+      const handleFocus = () => setProData(getProStatus());
+      const handleUpdate = () => setProData(getProStatus());
+      window.addEventListener('focus', handleFocus);
+      window.addEventListener('bv-pro-updated', handleUpdate);
+      return () => {
+        window.removeEventListener('focus', handleFocus);
+        window.removeEventListener('bv-pro-updated', handleUpdate);
+      };
+    }
+
+    // Logged in — listen to Firestore subscription field
+    const db = getFirestore();
+    const userRef = doc(db, 'users', user.uid);
+
+    const unsub = onSnapshot(userRef, (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data();
+      const sub = data.subscription || {};
+
+      const isPro = sub.tier === 'pro' && sub.status === 'active';
+      const plan = sub.plan || null;
+      const expiresAt = sub.expiresAt?.toDate?.()?.toISOString() || null;
+
+      // Sync to localStorage so getProStatus() works offline too
+      if (isPro) {
+        setProStatus(plan, expiresAt);
+      }
+
+      setProData({ isPro, plan, expiresAt });
+    }, (err) => {
+      console.error('Firestore subscription watch error:', err);
+      // Fallback to localStorage
+      setProData(getProStatus());
+    });
+
+    return () => unsub();
   }, []);
 
   const canUse = useCallback((feature) => {
     if (proData.isPro) return true;
-    // Free tier features
     const FREE = new Set([
       'ai_form',
       'rep_counter',
@@ -33,7 +64,7 @@ export function usePro() {
       'share_card',
       'dark_theme',
       'history_10',
-      'ffmi',        // FFMI always free
+      'ffmi',
     ]);
     return FREE.has(feature);
   }, [proData.isPro]);
