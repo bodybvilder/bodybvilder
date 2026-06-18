@@ -329,6 +329,7 @@ LIMB_R  = 7      # default capsule radius for arms (in 300px space)
 LEG_R   = 9      # capsule radius for legs
 FORE_R  = 6      # forearm radius
 SHIN_R  = 7      # shin radius
+JR      = 4      # joint dot radius (knee cap etc)
 
 
 def draw_body(d, p, flip_x=False):
@@ -336,6 +337,9 @@ def draw_body(d, p, flip_x=False):
     Draw a complete side-view or front-view body.
     p = pose dict with all coordinates in 300px space.
     flip_x = mirror horizontally (for exercises facing other direction)
+
+    KEY FIX: torso is drawn from shoulder_y → hip_y (using actual hip coords),
+    so it always connects to where the legs start. No more split body.
     """
     def fx(x):
         return 300 - x if flip_x else x
@@ -343,55 +347,99 @@ def draw_body(d, p, flip_x=False):
     def fp(key_x, key_y):
         return fx(p[key_x]), p[key_y]
 
-    # Helper to get accent color for a body segment
     def col(flag_key, default=FIG):
         return ACC if p.get(flag_key) else default
 
-    # ── Layer 1: back limbs (dimmer) ──────────────────────────────────────
-    # Back leg
-    capsule_s(d, *fp('hip_x','hip_y'),
-                  *fp('knee_rx','knee_ry'), LEG_R, FIG_D)
-    capsule_s(d, *fp('knee_rx','knee_ry'),
-                  *fp('foot_rx','foot_ry'), SHIN_R, FIG_D)
+    # Resolve actual hip position
+    hip_x = fx(p['hip_x'])
+    hip_y = p['hip_y']
+    sh_x  = fx(p['shoulder_x'])
+    sh_y  = p['shoulder_y']
 
-    # Back arm
-    capsule_s(d, fx(p['shoulder_x'])+p.get('shldr_off_rx',0),
-                  p['shoulder_y'],
-                  *fp('elbow_rx','elbow_ry'), LIMB_R, FIG_D)
-    capsule_s(d, *fp('elbow_rx','elbow_ry'),
-                  *fp('hand_rx','hand_ry'), FORE_R, FIG_D)
-
-    # ── Layer 2: torso ────────────────────────────────────────────────────
     sw = p.get('shoulder_w', 32)
     hw = p.get('hip_w', 20)
-    th = p.get('torso_h', 72)
-    torso(d,
-          fx(p['shoulder_x']), p['shoulder_y'],
-          sw, hw, th,
-          color=col('acc_back', FIG),
-          accent_chest=p.get('acc_chest', False),
-          accent_back=p.get('acc_back', False))
+
+    # ── Layer 1: back leg ─────────────────────────────────────────────────
+    capsule_s(d, hip_x, hip_y, *fp('knee_rx','knee_ry'), LEG_R, FIG_D)
+    capsule_s(d, *fp('knee_rx','knee_ry'), *fp('foot_rx','foot_ry'), SHIN_R, FIG_D)
+
+    # Back arm
+    capsule_s(d, sh_x + p.get('shldr_off_rx', 0), sh_y,
+                 *fp('elbow_rx','elbow_ry'), LIMB_R, FIG_D)
+    capsule_s(d, *fp('elbow_rx','elbow_ry'), *fp('hand_rx','hand_ry'), FORE_R, FIG_D)
+
+    # ── Layer 2: torso — anchored shoulder→hip so it ALWAYS connects ──────
+    # Draw torso as trapezoid from (sh_x, sh_y) down to (hip_x, hip_y)
+    # This replaces the old fixed-height torso() that caused the gap.
+    torso_color = col('acc_back', FIG)
+    pts = [
+        pt(sh_x - sw, sh_y),
+        pt(sh_x + sw, sh_y),
+        pt(hip_x + hw, hip_y),
+        pt(hip_x - hw, hip_y),
+    ]
+    d.polygon(pts, fill=torso_color)
+
+    # Chest highlight overlay
+    if p.get('acc_chest'):
+        th = hip_y - sh_y
+        chest_l = [
+            pt(sh_x - sw*0.7, sh_y + th*0.05),
+            pt(sh_x - sw*0.1, sh_y + th*0.05),
+            pt(hip_x - hw*0.1, sh_y + th*0.5),
+            pt(sh_x - sw*0.7, sh_y + th*0.45),
+        ]
+        d.polygon(chest_l, fill=ACC)
+        chest_r = [
+            pt(sh_x + sw*0.1, sh_y + th*0.05),
+            pt(sh_x + sw*0.7, sh_y + th*0.05),
+            pt(sh_x + sw*0.7, sh_y + th*0.45),
+            pt(hip_x + hw*0.1, sh_y + th*0.5),
+        ]
+        d.polygon(chest_r, fill=ACC)
+
+    # Back/lat highlight
+    if p.get('acc_back'):
+        th = hip_y - sh_y
+        d.polygon([
+            pt(sh_x - sw*0.95, sh_y + th*0.1),
+            pt(sh_x - sw*0.3,  sh_y + th*0.2),
+            pt(hip_x - hw*0.9, sh_y + th*0.9),
+            pt(sh_x - sw*0.95, sh_y + th*0.9),
+        ], fill=ACC)
+        d.polygon([
+            pt(sh_x + sw*0.3,  sh_y + th*0.2),
+            pt(sh_x + sw*0.95, sh_y + th*0.1),
+            pt(sh_x + sw*0.95, sh_y + th*0.9),
+            pt(hip_x + hw*0.9, sh_y + th*0.9),
+        ], fill=ACC)
+
+    # Hip junction — filled circle to blend torso→leg joint cleanly
+    hw2 = int(hw * SCALE)
+    hx2, hy2 = int(hip_x * SCALE), int(hip_y * SCALE)
+    d.ellipse([hx2 - hw2, hy2 - hw2, hx2 + hw2, hy2 + hw2], fill=torso_color)
 
     # ── Layer 3: front leg ────────────────────────────────────────────────
-    q_col = col('acc_quad_l') if not flip_x else col('acc_quad_r')
-    s_col = col('acc_calf_l') if not flip_x else col('acc_calf_r')
-    capsule_s(d, *fp('hip_x','hip_y'),
-                  *fp('knee_lx','knee_ly'), LEG_R + 1, q_col if not p.get('acc_quad_l') else ACC)
-    capsule_s(d, *fp('knee_lx','knee_ly'),
-                  *fp('foot_lx','foot_ly'), SHIN_R, s_col)
+    q_col = ACC if p.get('acc_quad_l') else FIG_L
+    s_col = ACC if p.get('acc_calf_l') else FIG
+    capsule_s(d, hip_x, hip_y, *fp('knee_lx','knee_ly'), LEG_R + 1, q_col)
+    capsule_s(d, *fp('knee_lx','knee_ly'), *fp('foot_lx','foot_ly'), SHIN_R, s_col)
+
+    # Knee cap dot
+    kx, ky = fp('knee_lx','knee_ly')
+    d.ellipse([int(kx*SCALE)-JR*SCALE, int(ky*SCALE)-JR*SCALE,
+               int(kx*SCALE)+JR*SCALE, int(ky*SCALE)+JR*SCALE], fill=FIG_L)
 
     # ── Layer 4: front arm ────────────────────────────────────────────────
-    ua_col  = col('acc_bicep_l',  col('acc_shoulder_l', FIG_L))
-    fa_col  = col('acc_bicep_l',  col('acc_tricep_l',   FIG_L))
+    ua_col = col('acc_bicep_l', col('acc_shoulder_l', FIG_L))
+    fa_col = col('acc_bicep_l', col('acc_tricep_l',   FIG_L))
 
-    capsule_s(d, fx(p['shoulder_x'])+p.get('shldr_off_lx',0),
-                  p['shoulder_y'],
-                  *fp('elbow_lx','elbow_ly'), LIMB_R, ua_col)
-    capsule_s(d, *fp('elbow_lx','elbow_ly'),
-                  *fp('hand_lx','hand_ly'), FORE_R, fa_col)
+    capsule_s(d, sh_x + p.get('shldr_off_lx', 0), sh_y,
+                 *fp('elbow_lx','elbow_ly'), LIMB_R, ua_col)
+    capsule_s(d, *fp('elbow_lx','elbow_ly'), *fp('hand_lx','hand_ly'), FORE_R, fa_col)
 
     # ── Layer 5: head ─────────────────────────────────────────────────────
-    head(d, fx(p['head_x']), p['head_y'], r=p.get('head_r',12))
+    head(d, fx(p['head_x']), p['head_y'], r=p.get('head_r', 12))
 
 
 # ── Pose builder helpers ──────────────────────────────────────────────────
