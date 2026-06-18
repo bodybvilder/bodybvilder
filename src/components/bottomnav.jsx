@@ -90,7 +90,7 @@ export default function BottomNav() {
     }}>
       {NAV_ITEMS.map(item => {
         const active = location.pathname === item.path ||
-          (item.path === '/stats' && ['/ffmi', '/food', '/plan', '/meal', '/measurements'].includes(location.pathname));
+          (item.path === '/stats' && ['/ffmi', '/food', '/plan', '/meal', '/measurements', '/recovery'].includes(location.pathname));
         return (
           <button
             key={item.path}

@@ -5,6 +5,149 @@ import UpgradePrompt from '../components/upgradeprompt';
 import StreakCalendar from '../components/streakcalendar';
 import { usePro } from '../hooks/usepro';
 
+// ── Progressive Overload + Weekly Volume ──────────────────────────────────
+function ProgressSection({ navigate }) {
+  const strengthLog = (() => {
+    try { return JSON.parse(localStorage.getItem('bv-strength-log') || '{}'); }
+    catch { return {}; }
+  })();
+
+  // Top 5 exercises with history
+  const exercises = Object.entries(strengthLog)
+    .filter(([, v]) => v.history?.length > 1)
+    .slice(0, 5);
+
+  // Weekly volume from history — group muscle categories
+  const history = (() => {
+    try { return JSON.parse(localStorage.getItem('bv-history') || '[]'); }
+    catch { return []; }
+  })();
+
+  // Sets per muscle this week
+  const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const weekHistory = history.filter(h => new Date(h.date).getTime() > oneWeekAgo);
+  const MUSCLE_TARGETS = { chest: 12, back: 14, legs: 14, shoulders: 10, arms: 8, core: 10 };
+  const muscleVolume = { chest: 0, back: 0, legs: 0, shoulders: 0, arms: 0, core: 0 };
+  weekHistory.forEach(h => {
+    const n = (h.exerciseName || '').toLowerCase();
+    if (n.includes('chest') || n.includes('push') || n.includes('fly') || n.includes('bench')) muscleVolume.chest += 3;
+    else if (n.includes('pull') || n.includes('row') || n.includes('dead') || n.includes('lat')) muscleVolume.back += 3;
+    else if (n.includes('squat') || n.includes('lunge') || n.includes('leg') || n.includes('glute') || n.includes('calf')) muscleVolume.legs += 3;
+    else if (n.includes('shoulder') || n.includes('press') || n.includes('delt') || n.includes('raise')) muscleVolume.shoulders += 3;
+    else if (n.includes('curl') || n.includes('tricep') || n.includes('bicep') || n.includes('dip')) muscleVolume.arms += 3;
+    else if (n.includes('plank') || n.includes('crunch') || n.includes('core') || n.includes('ab')) muscleVolume.core += 3;
+  });
+
+  return (
+    <div>
+      {/* Progressive Overload Chart */}
+      {exercises.length > 0 && (
+        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '20px', padding: '20px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+            </svg>
+            <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-0)', letterSpacing: '-0.02em' }}>Progressive Overload</h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {exercises.map(([id, data]) => {
+              const hist = (data.history || []).slice(0, 6).reverse();
+              const max = Math.max(...hist.map(h => h.maxWeight), 1);
+              const latest = hist[hist.length - 1];
+              const prev = hist[hist.length - 2];
+              const diff = prev ? latest?.maxWeight - prev?.maxWeight : 0;
+              return (
+                <div key={id}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-0)', textTransform: 'capitalize' }}>
+                      {id.replace(/-/g, ' ')}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: 'var(--accent)' }}>
+                        {latest?.maxWeight}{latest?.unit}
+                      </span>
+                      {diff !== 0 && (
+                        <span style={{ fontSize: '10px', fontWeight: 700, color: diff > 0 ? 'var(--green)' : 'var(--red)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                            {diff > 0 ? <polyline points="18 15 12 9 6 15"/> : <polyline points="6 9 12 15 18 9"/>}
+                          </svg>
+                          {Math.abs(diff)}{latest?.unit}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {/* Mini sparkline */}
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '28px' }}>
+                    {hist.map((h, i) => {
+                      const pct = Math.max((h.maxWeight / max) * 100, 8);
+                      const isLast = i === hist.length - 1;
+                      return (
+                        <div key={i} style={{ flex: 1, height: `${pct}%`, background: isLast ? 'var(--accent)' : 'var(--bg-3)', borderRadius: '3px 3px 2px 2px', transition: 'height 0.4s ease' }} />
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {exercises.length === 0 && (
+            <p style={{ fontSize: '12px', color: 'var(--text-3)', textAlign: 'center', padding: '12px 0' }}>
+              Log weights during workouts to track overload
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Weekly Volume Tracker */}
+      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '20px', padding: '20px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M6 4h15M6 8h15M6 4v16M2 4v16"/><path d="M2 20h4"/><path d="M2 12h4"/>
+            </svg>
+            <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-0)', letterSpacing: '-0.02em' }}>Weekly Volume</h3>
+          </div>
+          <span style={{ fontSize: '10px', color: 'var(--text-3)', fontWeight: 600, background: 'var(--bg-2)', borderRadius: '99px', padding: '3px 8px' }}>
+            Schoenfeld 10–20 sets/muscle
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {Object.entries(MUSCLE_TARGETS).map(([muscle, target]) => {
+            const vol = muscleVolume[muscle] || 0;
+            const pct = Math.min((vol / target) * 100, 100);
+            const color = pct >= 100 ? 'var(--accent)' : pct >= 60 ? 'var(--orange)' : 'var(--red)';
+            const status = pct >= 100 ? 'Optimal' : pct >= 60 ? 'Building' : vol > 0 ? 'Low' : 'Not trained';
+            return (
+              <div key={muscle}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-1)', textTransform: 'capitalize' }}>{muscle}</span>
+                  <span style={{ fontSize: '10px', fontWeight: 700, color }}>
+                    {vol}/{target} sets · {status}
+                  </span>
+                </div>
+                <div style={{ height: '5px', background: 'var(--bg-3)', borderRadius: '99px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: '99px', transition: 'width 0.6s cubic-bezier(0.34,1.56,0.64,1)' }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <button
+          onClick={() => navigate('/recovery')}
+          style={{ width: '100%', marginTop: '14px', padding: '10px', borderRadius: '12px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-2)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'all 0.15s ease' }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(200,255,0,0.3)'; e.currentTarget.style.color = 'var(--accent)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-2)'; }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+          </svg>
+          View Recovery Dashboard
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── 1RM Calculator (Epley + Brzycki average) ─────────────────────────────
 function calc1RM(weightKg, reps) {
   if (!weightKg || !reps || reps < 1) return 0;
@@ -284,6 +427,11 @@ export default function StatsPage() {
       {/* ── 1RM Calculator ── */}
       <div style={{ padding: '0 20px 4px', animation: 'fadeUp 0.4s 0.1s cubic-bezier(0.16,1,0.3,1) both' }}>
         <OneRMCalculator />
+      </div>
+
+      {/* ── Progressive Overload + Volume ── */}
+      <div style={{ padding: '0 20px 20px', animation: 'fadeUp 0.4s 0.11s cubic-bezier(0.16,1,0.3,1) both' }}>
+        <ProgressSection navigate={navigate} />
       </div>
 
       {/* ── Tools ── */}

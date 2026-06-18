@@ -856,6 +856,44 @@ export default function WorkoutPage() {
         <ShareCard exercise={workoutStats.exercise} score={workoutStats.score} reps={workoutStats.reps} duration={workoutStats.duration}
           onClose={() => { setShowShareCard(false); navigate('/'); }} />
       )}
+
+      {/* ── Post-workout protein reminder ── */}
+      {showShareCard && workoutStats && (
+        <div style={{
+          position: 'fixed', bottom: 0, left: 0, right: 0,
+          background: 'linear-gradient(135deg, rgba(200,255,0,0.12), rgba(0,200,100,0.08))',
+          backdropFilter: 'blur(20px)',
+          borderTop: '1px solid rgba(200,255,0,0.25)',
+          padding: '14px 20px calc(14px + env(safe-area-inset-bottom))',
+          zIndex: 200,
+          display: 'flex', alignItems: 'center', gap: '12px',
+          animation: 'slideUp 0.4s cubic-bezier(0.16,1,0.3,1) both',
+          animationDelay: '0.6s',
+        }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(200,255,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8h1a4 4 0 010 8h-1"/>
+              <path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/>
+              <line x1="6" y1="1" x2="6" y2="4"/>
+              <line x1="10" y1="1" x2="10" y2="4"/>
+              <line x1="14" y1="1" x2="14" y2="4"/>
+            </svg>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.01em' }}>
+              Protein window open — 2h left
+            </div>
+            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', marginTop: '1px' }}>
+              0.4g/kg triggers max muscle protein synthesis
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/meal')}
+            style={{ padding: '8px 14px', borderRadius: '10px', border: 'none', background: 'var(--accent)', color: '#000', fontSize: '12px', fontWeight: 800, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>
+            Meal Plan
+          </button>
+        </div>
+      )}
     </div>
   );
 }

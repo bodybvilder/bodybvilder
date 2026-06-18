@@ -13,6 +13,7 @@ import PlanBuilderPage from './pages/planbuilderpage';
 import TrainerPage from './pages/trainerpage';
 import MealPlanPage from './pages/mealplanpage';
 import MeasurementsPage from './pages/measurementspage';
+import RecoveryPage from './pages/recoverypage';
 import BottomNav from './components/bottomnav';
 import SplashScreen from './components/splashscreen';
 import Logo from './components/logo';
@@ -148,6 +149,7 @@ function MainApp({ user, isGuest }) {
           <Route path="/pro" element={<ProPage user={user} />} />
           <Route path="/meal" element={<MealPlanPage />} />
           <Route path="/measurements" element={<MeasurementsPage />} />
+          <Route path="/recovery" element={<RecoveryPage />} />
         </Routes>
         <div className="app-bottom-nav">
           <BottomNav />
