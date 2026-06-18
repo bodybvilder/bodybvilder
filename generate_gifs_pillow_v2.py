@@ -1631,19 +1631,26 @@ def _squat_base(name, has_barbell=False, n=FRAMES):
         knl_x  = lerp(132, 108, t)
         knr_x  = lerp(168, 192, t)
         bar_y  = lerp(100, 118, t) if has_barbell else 0
+        # Upper body drops with hip — torso stays same height above hip
+        sh_y   = hip_y - 72     # shoulder always 72px above hip
+        head_y = sh_y  - 24     # head always 24px above shoulder
         img, d = new_frame()
         ground(d)
         floor_shadow(d, 150, 272)
         if has_barbell:
-            barbell(d, 150, bar_y, bar_len=168)
+            barbell(d, 150, bar_y if bar_y else sh_y - 14, bar_len=168)
         p = base_standing(
+            head_x=150, head_y=head_y,
+            sh_x=150, sh_y=sh_y,
             hip_x=150, hip_y=hip_y,
             knee_lx=knl_x, knee_ly=knee_y, foot_lx=118, foot_ly=268,
             knee_rx=knr_x, knee_ry=knee_y, foot_rx=182, foot_ry=268,
-            elbow_lx=lerp(105,85,t), elbow_ly=lerp(110,140,t),
-            hand_lx=lerp(108,78,t),  hand_ly=lerp(148,bar_y+6,t) if has_barbell else lerp(148,168,t),
-            elbow_rx=lerp(195,215,t), elbow_ry=lerp(110,140,t),
-            hand_rx=lerp(192,222,t),  hand_ry=lerp(148,bar_y+6,t) if has_barbell else lerp(148,168,t),
+            elbow_lx=lerp(105,85,t), elbow_ly=lerp(sh_y+48, sh_y+78, t),
+            hand_lx=lerp(108,78,t),
+            hand_ly=(lerp(sh_y-14+6, bar_y+6, t) if has_barbell else lerp(sh_y+86, sh_y+106, t)),
+            elbow_rx=lerp(195,215,t), elbow_ry=lerp(sh_y+48, sh_y+78, t),
+            hand_rx=lerp(192,222,t),
+            hand_ry=(lerp(sh_y-14+6, bar_y+6, t) if has_barbell else lerp(sh_y+86, sh_y+106, t)),
             acc_quad_l=True,
         )
         draw_body(d, p)
@@ -1661,15 +1668,19 @@ def gen_lunge():
         t = ease(i / (FRAMES-1))
         fknee_y = lerp(205, 252, t)
         bknee_y = lerp(195, 255, t)
+        hip_y   = lerp(188, 210, t)   # hip drops slightly on lunge
+        sh_y    = hip_y - 72
+        head_y  = sh_y  - 24
         img, d = new_frame()
         ground(d)
         floor_shadow(d, 150, 272)
         p = base_standing(
-            hip_x=150, hip_y=188,
+            head_x=150, head_y=head_y, sh_x=150, sh_y=sh_y,
+            hip_x=150, hip_y=hip_y,
             knee_lx=lerp(112,105,t), knee_ly=fknee_y, foot_lx=100, foot_ly=268,
             knee_rx=200, knee_ry=bknee_y, foot_rx=222, foot_ry=268,
-            elbow_lx=108, elbow_ly=148, hand_lx=112, hand_ly=178,
-            elbow_rx=192, elbow_ry=148, hand_rx=188, hand_ry=178,
+            elbow_lx=108, elbow_ly=sh_y+86, hand_lx=112, hand_ly=sh_y+116,
+            elbow_rx=192, elbow_ry=sh_y+86, hand_rx=188, hand_ry=sh_y+116,
             acc_quad_l=True,
         )
         draw_body(d, p)
@@ -1785,16 +1796,19 @@ def gen_bulgarian_split_squat():
         t = ease(i / (FRAMES-1))
         hip_y   = lerp(185, 242, t)
         fknee_y = lerp(228, 270, t)
+        sh_y    = hip_y - 72
+        head_y  = sh_y  - 24
         img, d = new_frame()
         ground(d)
         flat_bench(d, bx=162, by=185, bw=122, bh=12)
         floor_shadow(d, 130, 272)
         p = base_standing(
+            head_x=148, head_y=head_y, sh_x=148, sh_y=sh_y,
             hip_x=148, hip_y=hip_y,
             knee_lx=108, knee_ly=fknee_y, foot_lx=98, foot_ly=268,
             knee_rx=198, knee_ry=218, foot_rx=225, foot_ry=188,
-            elbow_lx=105, elbow_ly=148, hand_lx=108, hand_ly=175,
-            elbow_rx=188, elbow_ry=148, hand_rx=185, hand_ry=175,
+            elbow_lx=105, elbow_ly=sh_y+86, hand_lx=108, hand_ly=sh_y+113,
+            elbow_rx=188, elbow_ry=sh_y+86, hand_rx=185, hand_ry=sh_y+113,
             acc_quad_l=True,
         )
         draw_body(d, p)
@@ -1884,19 +1898,22 @@ def gen_hack_squat():
         t = ease(i / (FRAMES-1))
         hip_y  = lerp(195, 248, t)
         knee_y = lerp(242, 270, t)
+        sh_y   = hip_y - 72
+        head_y = sh_y  - 24
         img, d = new_frame()
         ground(d)
         d.line([s(82), s(38), s(222), s(278)], fill=EQP_D, width=s(5))
-        d.rectangle([s(100), s(108), s(200), s(122)], fill=EQP)
+        d.rectangle([s(100), s(sh_y-10), s(200), s(sh_y+4)], fill=EQP)  # shoulder pads move with body
         floor_shadow(d, 150, 272)
         p = base_standing(
+            head_x=150, head_y=head_y, sh_x=150, sh_y=sh_y,
             hip_x=150, hip_y=hip_y,
             knee_lx=128, knee_ly=knee_y, foot_lx=115, foot_ly=268,
             knee_rx=172, knee_ry=knee_y, foot_rx=185, foot_ry=268,
-            elbow_lx=lerp(95,88,t), elbow_ly=lerp(148,160,t),
-            hand_lx=lerp(88,78,t), hand_ly=lerp(172,180,t),
-            elbow_rx=lerp(205,212,t), elbow_ry=lerp(148,160,t),
-            hand_rx=lerp(212,222,t), hand_ry=lerp(172,180,t),
+            elbow_lx=lerp(95,88,t), elbow_ly=lerp(sh_y+48,sh_y+68,t),
+            hand_lx=lerp(88,78,t), hand_ly=lerp(sh_y+72,sh_y+82,t),
+            elbow_rx=lerp(205,212,t), elbow_ry=lerp(sh_y+48,sh_y+68,t),
+            hand_rx=lerp(212,222,t), hand_ry=lerp(sh_y+72,sh_y+82,t),
             acc_quad_l=True,
         )
         draw_body(d, p)
