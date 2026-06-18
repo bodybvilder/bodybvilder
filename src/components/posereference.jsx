@@ -1,5 +1,7 @@
 import React from 'react';
 
+import React, { useState } from 'react';
+
 /**
  * SVG silhouette references for each bodybuilding pose.
  * Displayed as a semi-transparent overlay guide in Pose Practice Mode.
@@ -236,17 +238,41 @@ export function MPBackRef() {
   );
 }
 
+// ── GIF-based pose reference (loads from /exercise-gifs/) ────────────────
+// Falls back to SVG component if GIF not found.
+function makePoseGifRef(poseId, FallbackSVG) {
+  return function PoseGifRef() {
+    const [failed, setFailed] = useState(false);
+    if (failed) return <FallbackSVG />;
+    return (
+      <img
+        src={`/exercise-gifs/${poseId}.gif`}
+        alt={poseId}
+        onError={() => setFailed(true)}
+        style={{
+          width: 140,
+          height: 220,
+          objectFit: 'contain',
+          display: 'block',
+          filter: 'drop-shadow(0 0 12px rgba(200,255,0,0.4))',
+          borderRadius: 8,
+        }}
+      />
+    );
+  };
+}
+
 // ── Map pose ID to component ─────────────────────────────────────────────
 export const POSE_REFS = {
-  'pose-front-double-biceps': FrontDoubleBicepsRef,
-  'pose-front-lat-spread':    FrontLatSpreadRef,
-  'pose-side-chest':          SideChestRef,
-  'pose-side-triceps':        SideChestRef, // mirrored
-  'pose-abs-thighs':          AbsThighsRef,
-  'pose-most-muscular':       MostMuscularRef,
-  'pose-back-double-biceps':  MPBackRef,
-  'pose-back-lat-spread':     MPBackRef,
-  'pose-mp-front':            MPFrontRef,
-  'pose-mp-back':             MPBackRef,
-  'pose-mp-side':             SideChestRef,
+  'pose-front-double-biceps': makePoseGifRef('pose-front-double-biceps', FrontDoubleBicepsRef),
+  'pose-front-lat-spread':    makePoseGifRef('pose-front-lat-spread',    FrontLatSpreadRef),
+  'pose-side-chest':          makePoseGifRef('pose-side-chest',          SideChestRef),
+  'pose-side-triceps':        makePoseGifRef('pose-side-triceps',        SideChestRef),
+  'pose-abs-thighs':          makePoseGifRef('pose-abs-thighs',          AbsThighsRef),
+  'pose-most-muscular':       makePoseGifRef('pose-most-muscular',       MostMuscularRef),
+  'pose-back-double-biceps':  makePoseGifRef('pose-back-double-biceps',  MPBackRef),
+  'pose-back-lat-spread':     makePoseGifRef('pose-back-lat-spread',     MPBackRef),
+  'pose-mp-front':            makePoseGifRef('pose-mp-front',            MPFrontRef),
+  'pose-mp-back':             makePoseGifRef('pose-mp-back',             MPBackRef),
+  'pose-mp-side':             makePoseGifRef('pose-mp-side',             SideChestRef),
 };
