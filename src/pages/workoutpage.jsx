@@ -9,6 +9,10 @@ import ExerciseGif from '../components/exercisegif';
 import SmartRestTimer from '../components/resttimer';
 import { usePro } from '../hooks/usepro';
 import { getExerciseById } from '../data/exercises';
+import ExerciseIcon from '../components/exerciseicons';
+import { useBodyProfile } from '../hooks/useBodyProfile';
+import SmartBurnEngine from '../engine/SmartBurnEngine';
+import CalorieBurnDisplay from '../components/calorieburndisplay';
 
 // ── Icons ──────────────────────────────────────────────────────────────────
 const ArrowLeftIcon = () => (
@@ -22,8 +26,134 @@ const CheckIcon = ({ size = 16 }) => (
   </svg>
 );
 
+// ── PR Celebration Overlay ─────────────────────────────────────────────────
+// Ref: Strava's "Trophy" moment + Apple Fitness+ ring close animation
+// Full-screen radial burst with the new PR weight, auto-dismisses after 2.8s
+function PRCelebration({ weight, unit, visible, onDone }) {
+  useEffect(() => {
+    if (!visible) return;
+    const t = setTimeout(onDone, 2800);
+    return () => clearTimeout(t);
+  }, [visible, onDone]);
+
+  if (!visible) return null;
+  return (
+    <div
+      onClick={onDone}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(0,0,0,0.88)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
+        animation: 'prFadeIn 0.3s cubic-bezier(0.16,1,0.3,1) both',
+        cursor: 'pointer',
+      }}
+    >
+      <style>{`
+        @keyframes prFadeIn { from { opacity:0 } to { opacity:1 } }
+        @keyframes prBurst {
+          0%   { transform: scale(0.3) rotate(-8deg); opacity:0 }
+          60%  { transform: scale(1.08) rotate(2deg); opacity:1 }
+          100% { transform: scale(1) rotate(0deg); opacity:1 }
+        }
+        @keyframes prRing {
+          0%   { transform: scale(0.5); opacity:0 }
+          50%  { transform: scale(1.3); opacity:0.5 }
+          100% { transform: scale(2.2); opacity:0 }
+        }
+        @keyframes prSlideUp {
+          from { opacity:0; transform: translateY(20px) }
+          to   { opacity:1; transform: translateY(0) }
+        }
+        @keyframes prParticle {
+          0%   { transform: translateY(0) scale(1); opacity:1 }
+          100% { transform: translateY(-120px) scale(0); opacity:0 }
+        }
+      `}</style>
+
+      {/* Radial burst rings — like Apple ring close */}
+      {[0, 150, 300].map(delay => (
+        <div key={delay} style={{
+          position: 'absolute',
+          width: '220px', height: '220px',
+          borderRadius: '50%',
+          border: '2px solid rgba(200,255,0,0.6)',
+          animation: `prRing 1.4s ${delay}ms cubic-bezier(0.16,1,0.3,1) both`,
+          pointerEvents: 'none',
+        }} />
+      ))}
+
+      {/* Floating lime particles */}
+      {[...Array(8)].map((_, i) => (
+        <div key={i} style={{
+          position: 'absolute',
+          width: `${4 + (i % 3) * 3}px`,
+          height: `${4 + (i % 3) * 3}px`,
+          borderRadius: '50%',
+          background: i % 2 === 0 ? '#C8FF00' : '#fff',
+          top: `${30 + (i * 5)}%`,
+          left: `${10 + (i * 10)}%`,
+          animation: `prParticle ${0.8 + i * 0.12}s ${i * 60}ms ease-out both`,
+          pointerEvents: 'none',
+        }} />
+      ))}
+
+      {/* Main badge */}
+      <div style={{
+        animation: 'prBurst 0.55s cubic-bezier(0.34,1.56,0.64,1) both',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px',
+      }}>
+        {/* Trophy icon */}
+        <div style={{
+          width: '72px', height: '72px', borderRadius: '50%',
+          background: 'linear-gradient(135deg, #C8FF00 0%, #8FFF00 100%)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 0 48px rgba(200,255,0,0.5), 0 0 100px rgba(200,255,0,0.15)',
+          marginBottom: '8px',
+        }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="#000">
+            <path d="M6 9H4.5a2.5 2.5 0 010-5H6"/>
+            <path d="M18 9h1.5a2.5 2.5 0 000-5H18"/>
+            <path d="M4 22h16"/>
+            <path d="M18 2H6v7a6 6 0 0012 0V2z"/>
+            <line x1="12" y1="15" x2="12" y2="22"/>
+          </svg>
+        </div>
+
+        <div style={{
+          fontSize: '13px', fontWeight: 800, letterSpacing: '0.18em',
+          color: '#C8FF00', textTransform: 'uppercase',
+          animation: 'prSlideUp 0.4s 0.2s both',
+        }}>
+          New Personal Record
+        </div>
+
+        <div style={{
+          fontSize: '64px', fontWeight: 900, color: '#fff',
+          letterSpacing: '-0.05em', lineHeight: 1,
+          animation: 'prSlideUp 0.4s 0.3s both',
+        }}>
+          {weight}
+          <span style={{ fontSize: '24px', fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginLeft: '4px' }}>
+            {unit}
+          </span>
+        </div>
+
+        <div style={{
+          fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: 500,
+          animation: 'prSlideUp 0.4s 0.4s both',
+        }}>
+          Tap to dismiss
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Strength Logger (set-by-set weight log) ────────────────────────────────
-function StrengthLogger({ exerciseId, exerciseName, currentSet, targetSets, targetReps }) {
+function StrengthLogger({ exerciseId, exerciseName, currentSet, targetSets, targetReps, onNewPR }) {
   const STORAGE_KEY = 'bv-strength-log';
   const [sets, setSets] = useState(() => {
     try {
@@ -54,6 +184,8 @@ function StrengthLogger({ exerciseId, exerciseName, currentSet, targetSets, targ
       if (maxWeight > lastPR) {
         all[exerciseId].history.unshift({ date: new Date().toISOString(), maxWeight, unit });
         all[exerciseId].history = all[exerciseId].history.slice(0, 20);
+        // 🔥 Fire PR celebration
+        onNewPR?.(maxWeight, unit);
       }
       localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
     } catch (e) {}
@@ -217,6 +349,38 @@ export default function WorkoutPage() {
   const exerciseId = searchParams.get('exercise') || 'pushup';
   const exercise = getExerciseById(exerciseId) || getExerciseById('pushup');
 
+  // ── SmartBurnEngine ────────────────────────────────────────────────────
+  const { weightKg } = useBodyProfile();
+  const burnEngineRef   = useRef(null);
+  const burnIntervalRef = useRef(null);
+  const [burnData, setBurnData] = useState(null);
+  const formScoreRef = useRef(null);
+  if (!formScoreRef.current) {
+    formScoreRef.current = {
+      _s: [],
+      addSample: function(s) {
+        if (s > 0) {
+          this._s.push(s);
+          // Keep last 5 min of samples
+          if (this._s.length > 300) this._s.shift();
+        }
+      },
+      getMultiplier: function() {
+        const arr = this._s;
+        if (!arr.length) return 1.0;
+        const avg = arr.reduce(function(a, b) { return a + b; }, 0) / arr.length;
+        if (avg >= 95) return 1.30;
+        if (avg >= 85) return 1.20;
+        if (avg >= 75) return 1.10;
+        if (avg >= 65) return 1.00;
+        if (avg >= 55) return 0.90;
+        if (avg >= 45) return 0.80;
+        return 0.70;
+      },
+      reset: function() { this._s = []; },
+    };
+  }
+
   // ── Refs ─────────────────────────────────────────────────────────────
   const videoRef = useRef(null);
   const canvasRef = useRef(null);          // MediaPipe skeleton canvas
@@ -255,12 +419,89 @@ export default function WorkoutPage() {
   const [toastMsg, setToastMsg] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
 
+  // ── PR Celebration state ───────────────────────────────────────────────
+  const [prVisible, setPrVisible] = useState(false);
+  const [prData, setPrData] = useState({ weight: 0, unit: 'kg' });
+
   const targetSets = customSets ?? exercise?.targetSets ?? 3;
   const targetReps = customReps ?? exercise?.targetReps ?? 12;
 
+  // ── Voice Cues ────────────────────────────────────────────────────────
+  const voiceEnabledRef = useRef(
+    () => localStorage.getItem('bv-sound') !== 'false'
+  );
+  const lastSpokenRef = useRef({ text: '', time: 0 });
+  const speakCue = useCallback((text) => {
+    if (!voiceEnabledRef.current()) return;
+    if (!window.speechSynthesis) return;
+    const now = Date.now();
+    if (lastSpokenRef.current.text === text && now - lastSpokenRef.current.time < 3000) return;
+    lastSpokenRef.current = { text, time: now };
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = 1.1;
+    utt.pitch = 1.0;
+    utt.volume = 0.85;
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v => v.lang.startsWith('en') && v.localService) || voices[0];
+    if (preferred) utt.voice = preferred;
+    window.speechSynthesis.speak(utt);
+  }, []);
+
+  // ── usePoseDetection MUST be called before any useEffect that uses its values ──
   const { score, feedback, repCount, resetRepCount } = usePoseDetection(
     videoRef, canvasRef, cameraEnabled && isWorkoutActive, facingMode
   );
+
+  // Speak feedback whenever it changes during active workout
+  const prevFeedbackRef = useRef('');
+  useEffect(() => {
+    if (!isWorkoutActive || !feedback || feedback === prevFeedbackRef.current) return;
+    prevFeedbackRef.current = feedback;
+    speakCue(feedback);
+  }, [feedback, isWorkoutActive, speakCue]);
+
+  // Announce rep milestones
+  const prevRepCountRef = useRef(0);
+  useEffect(() => {
+    if (!isWorkoutActive) return;
+    if (repCount === prevRepCountRef.current) return;
+    prevRepCountRef.current = repCount;
+    if (repCount > 0 && repCount % 5 === 0) {
+      speakCue(`${repCount} reps`);
+    }
+    if (repCount === targetReps) {
+      speakCue(`Set complete! ${targetReps} reps done.`);
+    }
+  }, [repCount, isWorkoutActive, targetReps, speakCue]);
+
+  // ── Feed form samples ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (isWorkoutActive && score > 0) {
+      formScoreRef.current.addSample(score);
+    }
+  }, [score, isWorkoutActive]);
+
+  // ── Start / stop burn engine with workout ─────────────────────────────
+  useEffect(() => {
+    if (isWorkoutActive) {
+      burnEngineRef.current = new SmartBurnEngine({
+        exerciseId,
+        weightKg: weightKg ?? null,
+      });
+      burnEngineRef.current.start();
+      formScoreRef.current.reset();
+      burnIntervalRef.current = setInterval(function() {
+        if (!burnEngineRef.current) return;
+        const fm   = formScoreRef.current.getMultiplier();
+        const data = burnEngineRef.current.calculate({ formMultiplier: fm });
+        setBurnData(data);
+      }, 1000);
+    } else {
+      clearInterval(burnIntervalRef.current);
+    }
+    return function() { clearInterval(burnIntervalRef.current); };
+  }, [isWorkoutActive]); // eslint-disable-line
 
   // ── Toast helper ──────────────────────────────────────────────────────
   const showToast = useCallback((msg) => {
@@ -300,36 +541,54 @@ export default function WorkoutPage() {
   // ── Stop / save workout ───────────────────────────────────────────────
   const stopWorkout = useCallback(() => {
     const duration = Math.floor((Date.now() - workoutStartTime) / 1000);
-    setWorkoutStats({ exercise, score: Math.round(score), reps: repCount, duration: duration || 0 });
+    const fm             = formScoreRef.current.getMultiplier();
+    const finalBurn      = burnEngineRef.current
+      ? burnEngineRef.current.calculate({ formMultiplier: fm })
+      : null;
+    const caloriesBurned = finalBurn ? finalBurn.totalBurn : 0;
+
+    setWorkoutStats({ exercise, score: Math.round(score), reps: repCount, duration: duration || 0, caloriesBurned });
     setIsWorkoutActive(false);
     setShowShareCard(true);
     try {
       const saved = localStorage.getItem('bv-stats');
       const stats = saved ? JSON.parse(saved) : {
         workoutsCompleted: 0, streak: 0, lastWorkout: null,
-        totalReps: 0, totalTime: 0, weeklyWorkouts: [0,0,0,0,0,0,0]
+        totalReps: 0, totalTime: 0, totalCalories: 0,
+        weeklyWorkouts: [0,0,0,0,0,0,0]
       };
       stats.workoutsCompleted += 1;
-      stats.totalReps += repCount;
-      stats.totalTime += (duration || 0);
-      const today = new Date();
+      stats.totalReps         += repCount;
+      stats.totalTime         += (duration || 0);
+      stats.totalCalories      = (stats.totalCalories || 0) + caloriesBurned;
+      const today    = new Date();
       const dayIndex = today.getDay();
       stats.weeklyWorkouts[dayIndex] = (stats.weeklyWorkouts[dayIndex] || 0) + 1;
       const todayStr = today.toDateString();
       if (stats.lastWorkout !== todayStr) {
-        const lastDate = stats.lastWorkout ? new Date(stats.lastWorkout) : null;
-        const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+        const lastDate    = stats.lastWorkout ? new Date(stats.lastWorkout) : null;
+        const yesterday   = new Date(); yesterday.setDate(yesterday.getDate() - 1);
         if (lastDate && lastDate.toDateString() === yesterday.toDateString()) stats.streak += 1;
         else if (!lastDate || lastDate.toDateString() !== todayStr) stats.streak = 1;
         stats.lastWorkout = todayStr;
       }
       localStorage.setItem('bv-stats', JSON.stringify(stats));
-      const hist = localStorage.getItem('bv-history');
+      const hist    = localStorage.getItem('bv-history');
       const history = hist ? JSON.parse(hist) : [];
-      history.push({ exerciseName: exercise?.name || 'Workout', score: Math.round(score), reps: repCount, duration: duration || 0, date: new Date().toISOString() });
+      history.push({
+        exerciseName:   exercise?.name || 'Workout',
+        exerciseId,
+        score:          Math.round(score),
+        reps:           repCount,
+        duration:       duration || 0,
+        caloriesBurned,
+        formMultiplier: parseFloat(fm.toFixed(2)),
+        confidence:     finalBurn ? finalBurn.confidence : 'low',
+        date:           new Date().toISOString(),
+      });
       localStorage.setItem('bv-history', JSON.stringify(history.slice(-50)));
     } catch (err) { console.error('Save workout error:', err); }
-  }, [workoutStartTime, score, repCount, exercise]);
+  }, [workoutStartTime, score, repCount, exercise, exerciseId]); // eslint-disable-line
 
   // ── Next set / rest ───────────────────────────────────────────────────
   const nextSet = () => {
@@ -565,11 +824,15 @@ export default function WorkoutPage() {
         </div>
 
         <div style={{ padding: '20px 20px calc(40px + env(safe-area-inset-bottom))', textAlign: 'center' }}>
-          {/* Camera icon badge */}
+          {/* Exercise icon — custom SVG per equipment type */}
           <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--accent-dim)', border: '2px solid rgba(200,255,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', animation: 'fadeUp 0.4s both' }}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round">
-              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/>
-            </svg>
+            <ExerciseIcon
+              equipment={exercise?.equipment}
+              category={exercise?.category}
+              size={38}
+              color="var(--accent)"
+              strokeWidth={1.6}
+            />
           </div>
 
           {/* Category */}
@@ -584,11 +847,14 @@ export default function WorkoutPage() {
             {exercise?.description || 'Get in position and start when ready.'}
           </p>
 
-          {/* GIF + Muscle row */}
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', animation: 'fadeUp 0.4s 0.12s both' }}>
-            <ExerciseGif exerciseId={exerciseId} size={140} />
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '10px' }}>
-              <MuscleDiagram muscles={exercise?.muscles || []} exerciseId={exerciseId} size={90} />
+          {/* Exercise preview — GIF from ExerciseDB + muscle diagram */}
+          <div style={{ animation: 'fadeUp 0.4s 0.12s both', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+              <ExerciseGif exerciseId={exerciseId} size={220} />
+            </div>
+            {/* Muscle diagram row below rig */}
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'center' }}>
+              <MuscleDiagram muscles={exercise?.muscles || []} exerciseId={exerciseId} size={80} />
               <MuscleList muscles={exercise?.muscles || []} />
             </div>
           </div>
@@ -821,6 +1087,28 @@ export default function WorkoutPage() {
           </div>
         </div>
 
+        {/* Calorie burn display - disabled for debug */}
+        {false && isWorkoutActive && (
+          <div style={{ marginBottom: '8px' }}>
+            <CalorieBurnDisplay
+              burnData={burnData}
+              isActive={isWorkoutActive}
+              onSetupBody={() => navigate('/profile')}
+            />
+          </div>
+        )}
+
+        {/* Calorie burn display */}
+        {isWorkoutActive && (
+          <div style={{ marginBottom: '8px' }}>
+            <CalorieBurnDisplay
+              burnData={burnData}
+              isActive={isWorkoutActive}
+              onSetupBody={() => navigate('/profile')}
+            />
+          </div>
+        )}
+
         {/* Strength logger */}
         {isWorkoutActive && (
           <StrengthLogger
@@ -829,6 +1117,7 @@ export default function WorkoutPage() {
             currentSet={currentSet}
             targetSets={targetSets}
             targetReps={targetReps}
+            onNewPR={(w, u) => { setPrData({ weight: w, unit: u }); setPrVisible(true); }}
           />
         )}
 
@@ -856,6 +1145,14 @@ export default function WorkoutPage() {
         <ShareCard exercise={workoutStats.exercise} score={workoutStats.score} reps={workoutStats.reps} duration={workoutStats.duration}
           onClose={() => { setShowShareCard(false); navigate('/'); }} />
       )}
+
+      {/* ── PR Celebration overlay ── */}
+      <PRCelebration
+        weight={prData.weight}
+        unit={prData.unit}
+        visible={prVisible}
+        onDone={() => setPrVisible(false)}
+      />
 
       {/* ── Post-workout protein reminder ── */}
       {showShareCard && workoutStats && (
@@ -900,13 +1197,16 @@ export default function WorkoutPage() {
 
 // ── Sidebar button component ───────────────────────────────────────────────
 function SidebarBtn({ onClick, children, disabled, active, activeColor = 'rgba(200,255,0,0.9)', title }) {
+  const hapticTap = () => {
+    if (navigator.vibrate) navigator.vibrate(5);
+  };
   return (
     <button
-      onClick={onClick}
+      onClick={(e) => { hapticTap(); onClick(e); }}
       disabled={disabled}
-      title={title}
+      aria-label={title}
       style={{
-        width: '44px', height: '44px',
+        width: '48px', height: '48px',
         borderRadius: '50%',
         border: `1.5px solid ${active ? activeColor : 'rgba(255,255,255,0.14)'}`,
         background: active ? activeColor : 'rgba(0,0,0,0.65)',
