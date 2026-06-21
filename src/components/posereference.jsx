@@ -28,7 +28,6 @@ function PoseSVG({ children, width = 140, height = 220, flip = false }) {
   );
 }
 
-// Common style for reference silhouette
 const S = {
   stroke: 'rgba(200,255,0,0.7)',
   strokeWidth: STROKE,
@@ -37,39 +36,32 @@ const S = {
   fill: 'none',
 };
 const ST = { ...S, strokeWidth: STROKE_THIN };
+const FAINT = {
+  stroke: 'rgba(200,255,0,0.4)',
+  strokeWidth: 2,
+  strokeLinecap: 'round',
+  fill: 'rgba(200,255,0,0.08)',
+};
 
 // ── 1. Front Double Biceps ───────────────────────────────────────────────
 export function FrontDoubleBicepsRef() {
   return (
     <PoseSVG>
-      {/* Head */}
       <circle cx="70" cy="18" r={HEAD_R} stroke="rgba(200,255,0,0.7)" strokeWidth="3" fill="rgba(200,255,0,0.15)" />
-      {/* Neck */}
       <line x1="70" y1="26" x2="70" y2="38" {...S} />
-      {/* Torso */}
-      <line x1="70" y1="38" x2="70" y2="110" {...S} />
-      {/* Shoulders wide */}
-      <line x1="70" y1="42" x2="30" y2="48" {...S} />
-      <line x1="70" y1="42" x2="110" y2="48" {...S} />
-      {/* Left upper arm — raised */}
-      <line x1="30" y1="48" x2="12" y2="72" {...S} />
-      {/* Left forearm — flex up */}
-      <line x1="12" y1="72" x2="18" y2="48" {...S} />
-      {/* Right upper arm — raised */}
-      <line x1="110" y1="48" x2="128" y2="72" {...S} />
-      {/* Right forearm — flex up */}
-      <line x1="128" y1="72" x2="122" y2="48" {...S} />
-      {/* Hips */}
-      <line x1="55" y1="110" x2="85" y2="110" {...S} />
-      {/* Left leg */}
-      <line x1="55" y1="110" x2="48" y2="170" {...ST} />
-      <line x1="48" y1="170" x2="44" y2="210" {...ST} />
-      {/* Right leg */}
-      <line x1="85" y1="110" x2="92" y2="170" {...ST} />
-      <line x1="92" y1="170" x2="96" y2="210" {...ST} />
-      {/* Lat width indicator */}
-      <path d="M30 48 Q10 75 30 100" stroke="rgba(200,255,0,0.35)" strokeWidth="2" fill="none" strokeDasharray="4,3" />
-      <path d="M110 48 Q130 75 110 100" stroke="rgba(200,255,0,0.35)" strokeWidth="2" fill="none" strokeDasharray="4,3" />
+      <line x1="70" y1="38" x2="70" y2="100" {...S} />
+      <path d="M28 38 C8 32 6 50 26 80" stroke="rgba(200,255,0,0.8)" strokeWidth="3" fill="rgba(200,255,0,0.1)" />
+      <path d="M112 38 C122 32 124 50 104 80" stroke="rgba(200,255,0,0.8)" strokeWidth="3" fill="rgba(200,255,0,0.1)" />
+      <line x1="70" y1="32" x2="30" y2="40" {...S} />
+      <line x1="30" y1="40" x2="24" y2="28" {...S} />
+      <line x1="12" y1="40" x2="18" y2="28" stroke="rgba(200,255,0,0.9)" strokeWidth="4" />
+      <line x1="70" y1="32" x2="110" y2="40" {...S} />
+      <line x1="110" y1="40" x2="116" y2="28" {...S} />
+      <line x1="120" y1="40" x2="114" y2="28" stroke="rgba(200,255,0,0.9)" strokeWidth="4" />
+      <line x1="70" y1="100" x2="58" y2="160" {...ST} />
+      <line x1="58" y1="160" x2="54" y2="200" {...ST} />
+      <line x1="70" y1="100" x2="82" y2="160" {...ST} />
+      <line x1="82" y1="160" x2="86" y2="200" {...ST} />
     </PoseSVG>
   );
 }
@@ -78,26 +70,21 @@ export function FrontDoubleBicepsRef() {
 export function FrontLatSpreadRef() {
   return (
     <PoseSVG>
-      <circle cx="70" cy="18" r={HEAD_R} stroke="rgba(200,255,0,0.7)" strokeWidth="3" fill="rgba(200,255,0,0.15)" />
-      <line x1="70" y1="26" x2="70" y2="38" {...S} />
-      <line x1="70" y1="38" x2="70" y2="110" {...S} />
-      {/* Very wide shoulders (lat spread) */}
-      <line x1="70" y1="42" x2="22" y2="52" {...S} />
-      <line x1="70" y1="42" x2="118" y2="52" {...S} />
-      {/* Arms down, hands on hips */}
-      <line x1="22" y1="52" x2="28" y2="90" {...S} />
-      <line x1="28" y1="90" x2="42" y2="98" {...S} />
-      <line x1="118" y1="52" x2="112" y2="90" {...S} />
-      <line x1="112" y1="90" x2="98" y2="98" {...S} />
-      {/* Hips narrow */}
-      <line x1="58" y1="110" x2="82" y2="110" {...S} />
-      <line x1="58" y1="110" x2="50" y2="170" {...ST} />
-      <line x1="50" y1="170" x2="46" y2="210" {...ST} />
-      <line x1="82" y1="110" x2="90" y2="170" {...ST} />
-      <line x1="90" y1="170" x2="94" y2="210" {...ST} />
-      {/* V-taper lines */}
-      <line x1="22" y1="52" x2="58" y2="110" stroke="rgba(200,255,0,0.3)" strokeWidth="2" strokeDasharray="5,3" />
-      <line x1="118" y1="52" x2="82" y2="110" stroke="rgba(200,255,0,0.3)" strokeWidth="2" strokeDasharray="5,3" />
+      <circle cx="70" cy="18" r={HEAD_R} {...S} fill="rgba(200,255,0,0.15)" />
+      <line x1="70" y1="26" x2="70" y2="36" {...S} />
+      <line x1="70" y1="36" x2="70" y2="98" {...S} />
+      <path d="M28 36 C2 30 2 60 28 95" stroke="rgba(200,255,0,0.85)" strokeWidth="3" fill="rgba(200,255,0,0.08)" />
+      <path d="M112 36 C148 30 148 60 112 95" stroke="rgba(200,255,0,0.85)" strokeWidth="3" fill="rgba(200,255,0,0.08)" />
+      <line x1="70" y1="38" x2="30" y2="46" {...S} />
+      <line x1="30" y1="46" x2="26" y2="82" {...S} />
+      <line x1="70" y1="38" x2="110" y2="46" {...S} />
+      <line x1="110" y1="46" x2="114" y2="82" {...S} />
+      <path d="M28 36 L60 98" stroke="rgba(200,255,0,0.35)" strokeWidth="2" strokeDasharray="5,3" />
+      <path d="M112 36 L80 98" stroke="rgba(200,255,0,0.35)" strokeWidth="2" strokeDasharray="5,3" />
+      <line x1="70" y1="98" x2="60" y2="195" {...ST} />
+      <line x1="60" y1="195" x2="56" y2="215" {...ST} />
+      <line x1="70" y1="98" x2="80" y2="195" {...ST} />
+      <line x1="80" y1="195" x2="84" y2="215" {...ST} />
     </PoseSVG>
   );
 }
@@ -106,23 +93,17 @@ export function FrontLatSpreadRef() {
 export function SideChestRef() {
   return (
     <PoseSVG>
-      <circle cx="68" cy="18" r={HEAD_R} stroke="rgba(200,255,0,0.7)" strokeWidth="3" fill="rgba(200,255,0,0.15)" />
-      <line x1="68" y1="26" x2="68" y2="38" {...S} />
-      <line x1="68" y1="38" x2="65" y2="112" {...S} />
-      {/* Turned sideways — shoulders stacked */}
-      <line x1="66" y1="42" x2="50" y2="46" {...S} />
-      <line x1="66" y1="42" x2="82" y2="44" {...S} />
-      {/* Front arm pressed against chest, elbow bent */}
-      <line x1="50" y1="46" x2="40" y2="70" {...S} />
-      <line x1="40" y1="70" x2="55" y2="82" {...S} />
-      {/* Back arm hidden/behind */}
-      <line x1="82" y1="44" x2="88" y2="72" {...ST} strokeDasharray="5,3" />
-      {/* Chest pushed forward */}
-      <path d="M66 42 Q80 60 66 80" stroke="rgba(200,255,0,0.4)" strokeWidth="2" fill="rgba(200,255,0,0.05)" />
-      {/* Legs */}
-      <line x1="65" y1="112" x2="60" y2="170" {...ST} />
-      <line x1="60" y1="170" x2="58" y2="210" {...ST} />
-      <line x1="65" y1="112" x2="72" y2="170" {...ST} strokeDasharray="5,3" />
+      <circle cx="68" cy="18" r={HEAD_R} {...S} fill="rgba(200,255,0,0.15)" />
+      <line x1="68" y1="26" x2="68" y2="36" {...S} />
+      <line x1="68" y1="36" x2="68" y2="105" {...S} />
+      <line x1="66" y1="38" x2="50" y2="44" {...S} />
+      <line x1="66" y1="38" x2="82" y2="42" {...S} opacity="0.5" />
+      <line x1="50" y1="44" x2="44" y2="75" {...S} />
+      <line x1="44" y1="75" x2="44" y2="55" stroke="rgba(200,255,0,0.9)" strokeWidth="4" />
+      <path d="M68 36 Q80 55 68 80" {...FAINT} />
+      <line x1="68" y1="105" x2="60" y2="185" {...ST} />
+      <line x1="60" y1="185" x2="56" y2="215" {...ST} />
+      <line x1="68" y1="105" x2="76" y2="195" {...ST} opacity="0.5" />
     </PoseSVG>
   );
 }
@@ -131,26 +112,17 @@ export function SideChestRef() {
 export function AbsThighsRef() {
   return (
     <PoseSVG>
-      <circle cx="70" cy="18" r={HEAD_R} stroke="rgba(200,255,0,0.7)" strokeWidth="3" fill="rgba(200,255,0,0.15)" />
-      <line x1="70" y1="26" x2="70" y2="38" {...S} />
-      <line x1="70" y1="38" x2="70" y2="108" {...S} />
-      {/* Arms raised behind head */}
-      <line x1="70" y1="42" x2="40" y2="50" {...S} />
-      <line x1="40" y1="50" x2="30" y2="28" {...S} />
-      <line x1="30" y1="28" x2="50" y2="24" {...S} />
-      <line x1="70" y1="42" x2="100" y2="50" {...S} />
-      <line x1="100" y1="50" x2="110" y2="28" {...S} />
-      <line x1="110" y1="28" x2="90" y2="24" {...S} />
-      {/* Hips */}
-      <line x1="56" y1="108" x2="84" y2="108" {...S} />
-      {/* One leg forward — quad flex */}
-      <line x1="56" y1="108" x2="48" y2="162" {...S} strokeWidth="6" />
-      <line x1="48" y1="162" x2="44" y2="210" {...ST} />
-      {/* Back leg */}
-      <line x1="84" y1="108" x2="90" y2="162" {...ST} />
-      <line x1="90" y1="162" x2="92" y2="210" {...ST} />
-      {/* Abs crunch indicator */}
-      <path d="M62 60 L78 60 M60 72 L80 72 M62 84 L78 84 M64 96 L76 96" stroke="rgba(200,255,0,0.4)" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx="70" cy="18" r={HEAD_R} {...S} fill="rgba(200,255,0,0.15)" />
+      <line x1="70" y1="26" x2="70" y2="36" {...S} />
+      <line x1="70" y1="36" x2="70" y2="100" {...S} />
+      <line x1="70" y1="32" x2="40" y2="38" {...S} />
+      <line x1="40" y1="38" x2="32" y2="22" {...S} />
+      <line x1="70" y1="32" x2="100" y2="38" {...S} />
+      <line x1="100" y1="38" x2="108" y2="22" {...S} />
+      <line x1="60" y1="100" x2="54" y2="180" {...S} strokeWidth="5" />
+      <line x1="54" y1="180" x2="50" y2="215" {...ST} />
+      <line x1="70" y1="100" x2="80" y2="185" {...ST} opacity="0.5" />
+      <path d="M62 60 L78 60 M60 72 L80 72 M62 84 L78 84 M64 96 L76 96" stroke="rgba(200,255,0,0.5)" strokeWidth="1.5" strokeLinecap="round" />
     </PoseSVG>
   );
 }
@@ -159,26 +131,20 @@ export function AbsThighsRef() {
 export function MostMuscularRef() {
   return (
     <PoseSVG>
-      <circle cx="70" cy="22" r={HEAD_R} stroke="rgba(200,255,0,0.7)" strokeWidth="3" fill="rgba(200,255,0,0.15)" />
+      <circle cx="70" cy="22" r={HEAD_R} {...S} fill="rgba(200,255,0,0.15)" />
       <line x1="70" y1="30" x2="70" y2="42" {...S} />
-      {/* Leaning forward */}
-      <line x1="70" y1="42" x2="68" y2="105" {...S} />
-      {/* Wide shoulders */}
-      <line x1="70" y1="46" x2="28" y2="55" {...S} />
-      <line x1="70" y1="46" x2="112" y2="55" {...S} />
-      {/* Arms drive DOWN toward hips — crab position */}
-      <line x1="28" y1="55" x2="20" y2="82" {...S} />
-      <line x1="20" y1="82" x2="42" y2="100" {...S} />
-      <line x1="112" y1="55" x2="120" y2="82" {...S} />
-      <line x1="120" y1="82" x2="98" y2="100" {...S} />
-      {/* Trap bulge indicator */}
-      <path d="M50 38 Q70 30 90 38" stroke="rgba(200,255,0,0.5)" strokeWidth="4" fill="none" strokeLinecap="round" />
-      {/* Hips */}
-      <line x1="57" y1="105" x2="79" y2="105" {...S} />
-      <line x1="57" y1="105" x2="50" y2="160" {...ST} />
-      <line x1="50" y1="160" x2="46" y2="200" {...ST} />
-      <line x1="79" y1="105" x2="86" y2="160" {...ST} />
-      <line x1="86" y1="160" x2="90" y2="200" {...ST} />
+      <line x1="70" y1="42" x2="68" y2="100" {...S} />
+      <line x1="70" y1="36" x2="32" y2="45" {...S} />
+      <line x1="32" y1="45" x2="20" y2="85" {...S} />
+      <line x1="20" y1="85" x2="42" y2="98" {...S} />
+      <line x1="70" y1="36" x2="68" y2="45" {...S} />
+      <line x1="68" y1="45" x2="78" y2="85" {...S} />
+      <line x1="78" y1="85" x2="58" y2="98" {...S} />
+      <path d="M45 30 Q50 25 55 30" stroke="rgba(200,255,0,0.7)" strokeWidth="4" fill="none" />
+      <line x1="64" y1="100" x2="56" y2="185" {...ST} />
+      <line x1="56" y1="185" x2="52" y2="215" {...ST} />
+      <line x1="72" y1="100" x2="80" y2="185" {...ST} />
+      <line x1="80" y1="185" x2="84" y2="215" {...ST} />
     </PoseSVG>
   );
 }
@@ -187,26 +153,19 @@ export function MostMuscularRef() {
 export function MPFrontRef() {
   return (
     <PoseSVG>
-      <circle cx="70" cy="18" r={HEAD_R} stroke="rgba(200,255,0,0.7)" strokeWidth="3" fill="rgba(200,255,0,0.15)" />
+      <circle cx="70" cy="18" r={HEAD_R} {...S} fill="rgba(200,255,0,0.15)" />
       <line x1="70" y1="26" x2="70" y2="38" {...S} />
-      <line x1="70" y1="38" x2="70" y2="112" {...S} />
-      {/* Relaxed wide shoulders */}
-      <line x1="70" y1="42" x2="32" y2="52" {...S} />
-      <line x1="70" y1="42" x2="108" y2="52" {...S} />
-      {/* One hand on hip, one slightly away */}
-      <line x1="32" y1="52" x2="34" y2="85" {...S} />
-      <line x1="34" y1="85" x2="48" y2="95" {...S} />
-      <line x1="108" y1="52" x2="106" y2="80" {...S} />
-      <line x1="106" y1="80" x2="95" y2="90" {...S} />
-      {/* Hip pop — slight offset */}
-      <line x1="56" y1="112" x2="84" y2="108" {...S} />
-      {/* Board shorts */}
-      <line x1="54" y1="120" x2="86" y2="118" stroke="rgba(200,255,0,0.5)" strokeWidth="2" />
-      {/* Legs */}
-      <line x1="56" y1="112" x2="50" y2="168" {...ST} />
-      <line x1="50" y1="168" x2="46" y2="210" {...ST} />
-      <line x1="84" y1="108" x2="90" y2="164" {...ST} />
-      <line x1="90" y1="164" x2="94" y2="210" {...ST} />
+      <line x1="70" y1="38" x2="70" y2="95" {...S} />
+      <path d="M30 38 C15 35 15 55 30 60" stroke="rgba(200,255,0,0.6)" strokeWidth="2.5" fill="rgba(200,255,0,0.06)" />
+      <path d="M110 38 C125 35 125 55 110 60" stroke="rgba(200,255,0,0.6)" strokeWidth="2.5" fill="rgba(200,255,0,0.06)" />
+      <line x1="70" y1="36" x2="32" y2="42" {...S} />
+      <line x1="32" y1="42" x2="28" y2="75" {...S} />
+      <line x1="70" y1="36" x2="110" y2="42" {...S} />
+      <line x1="110" y1="42" x2="106" y2="75" {...S} />
+      <line x1="66" y1="95" x2="60" y2="185" {...ST} />
+      <line x1="60" y1="185" x2="56" y2="210" {...ST} />
+      <line x1="74" y1="95" x2="82" y2="185" {...ST} />
+      <line x1="82" y1="185" x2="86" y2="210" {...ST} />
     </PoseSVG>
   );
 }
@@ -215,39 +174,119 @@ export function MPFrontRef() {
 export function MPBackRef() {
   return (
     <PoseSVG>
-      <circle cx="70" cy="18" r={HEAD_R} stroke="rgba(200,255,0,0.7)" strokeWidth="3" fill="rgba(200,255,0,0.15)" />
-      <line x1="70" y1="26" x2="70" y2="38" {...S} />
-      <line x1="70" y1="38" x2="70" y2="110" {...S} />
-      {/* Wide lat back */}
-      <line x1="70" y1="42" x2="24" y2="55" {...S} />
-      <line x1="70" y1="42" x2="116" y2="55" {...S} />
-      {/* Arms slightly away showing lats */}
-      <line x1="24" y1="55" x2="20" y2="95" {...S} />
-      <line x1="116" y1="55" x2="120" y2="95" {...S} />
-      {/* V-taper to small waist */}
-      <path d="M24 55 L50 110" stroke="rgba(200,255,0,0.4)" strokeWidth="2" strokeDasharray="4,3" />
-      <path d="M116 55 L90 110" stroke="rgba(200,255,0,0.4)" strokeWidth="2" strokeDasharray="4,3" />
-      {/* Hips */}
-      <line x1="53" y1="110" x2="87" y2="110" {...S} />
-      <line x1="53" y1="110" x2="46" y2="168" {...ST} />
-      <line x1="46" y1="168" x2="42" y2="210" {...ST} />
-      <line x1="87" y1="110" x2="94" y2="168" {...ST} />
-      <line x1="94" y1="168" x2="98" y2="210" {...ST} />
+      <circle cx="70" cy="18" r={HEAD_R} {...S} fill="rgba(200,255,0,0.15)" />
+      <line x1="70" y1="26" x2="70" y2="36" {...S} />
+      <line x1="70" y1="36" x2="70" y2="95" {...S} />
+      <path d="M30 36 C8 30 8 60 30 65" stroke="rgba(200,255,0,0.7)" strokeWidth="3" fill="rgba(200,255,0,0.08)" />
+      <path d="M110 36 C132 30 132 60 110 65" stroke="rgba(200,255,0,0.7)" strokeWidth="3" fill="rgba(200,255,0,0.08)" />
+      <line x1="70" y1="38" x2="30" y2="46" {...S} />
+      <line x1="30" y1="46" x2="26" y2="80" {...S} />
+      <line x1="70" y1="38" x2="110" y2="46" {...S} />
+      <line x1="110" y1="46" x2="114" y2="80" {...S} />
+      <line x1="66" y1="95" x2="60" y2="185" {...ST} />
+      <line x1="60" y1="185" x2="56" y2="212" {...ST} />
+      <line x1="74" y1="95" x2="82" y2="185" {...ST} />
+      <line x1="82" y1="185" x2="86" y2="212" {...ST} />
     </PoseSVG>
   );
 }
 
-// ── GIF-based pose reference (loads from /exercise-gifs/) ────────────────
-// Falls back to SVG component if GIF not found.
-function makePoseGifRef(poseId, FallbackSVG) {
-  return function PoseGifRef() {
+// ── 8. Side Triceps ────────────────────────────────────────────────────────
+export function SideTricepsRef() {
+  return (
+    <PoseSVG>
+      <circle cx="68" cy="18" r={HEAD_R} {...S} fill="rgba(200,255,0,0.15)" />
+      <line x1="68" y1="26" x2="68" y2="36" {...S} />
+      <line x1="68" y1="36" x2="68" y2="100" {...S} />
+      <line x1="68" y1="36" x2="32" y2="45" {...S} />
+      <line x1="32" y1="45" x2="28" y2="90" {...S} />
+      <line x1="28" y1="90" x2="42" y2="98" {...S} strokeWidth="4" />
+      <line x1="68" y1="38" x2="110" y2="42" {...S} />
+      <line x1="110" y1="42" x2="114" y2="80" {...S} />
+      <line x1="68" y1="100" x2="60" y2="185" {...ST} />
+      <line x1="60" y1="185" x2="56" y2="210" {...ST} />
+      <path d="M70 50 Q85 70 70 90" {...FAINT} />
+    </PoseSVG>
+  );
+}
+
+// ── 9. Back Double Biceps ───────────────────────────────────────────────────
+export function BackDoubleBicepsRef() {
+  return (
+    <PoseSVG>
+      <circle cx="70" cy="18" r={HEAD_R} {...S} fill="rgba(200,255,0,0.15)" />
+      <line x1="70" y1="26" x2="70" y2="36" {...S} />
+      <line x1="70" y1="36" x2="70" y2="98" {...S} />
+      <path d="M28 36 C2 30 2 60 28 95" stroke="rgba(200,255,0,0.85)" strokeWidth="3" fill="rgba(200,255,0,0.08)" />
+      <path d="M112 36 C148 30 148 60 112 95" stroke="rgba(200,255,0,0.85)" strokeWidth="3" fill="rgba(200,255,0,0.08)" />
+      <line x1="70" y1="38" x2="30" y2="46" {...S} />
+      <line x1="30" y1="46" x2="24" y2="28" {...S} />
+      <line x1="12" y1="40" x2="18" y2="28" stroke="rgba(200,255,0,0.9)" strokeWidth="4" />
+      <line x1="70" y1="38" x2="110" y2="46" {...S} />
+      <line x1="110" y1="46" x2="116" y2="28" {...S} />
+      <line x1="120" y1="40" x2="114" y2="28" stroke="rgba(200,255,0,0.9)" strokeWidth="4" />
+      <line x1="70" y1="98" x2="60" y2="185" {...ST} />
+      <line x1="60" y1="185" x2="56" y2="210" {...ST} />
+      <line x1="70" y1="98" x2="80" y2="185" {...ST} />
+      <line x1="80" y1="185" x2="84" y2="210" {...ST} />
+    </PoseSVG>
+  );
+}
+
+// ── 10. Back Lat Spread ─────────────────────────────────────────────────────
+export function BackLatSpreadRef() {
+  return (
+    <PoseSVG>
+      <circle cx="70" cy="18" r={HEAD_R} {...S} fill="rgba(200,255,0,0.15)" />
+      <line x1="70" y1="26" x2="70" y2="36" {...S} />
+      <line x1="70" y1="36" x2="70" y2="98" {...S} />
+      <path d="M30 36 C8 30 8 60 30 95" stroke="rgba(200,255,0,0.85)" strokeWidth="3" fill="rgba(200,255,0,0.08)" />
+      <path d="M110 36 C132 30 132 60 110 95" stroke="rgba(200,255,0,0.85)" strokeWidth="3" fill="rgba(200,255,0,0.08)" />
+      <line x1="70" y1="38" x2="30" y2="46" {...S} />
+      <line x1="30" y1="46" x2="26" y2="82" {...S} />
+      <line x1="70" y1="38" x2="110" y2="46" {...S} />
+      <line x1="110" y1="46" x2="114" y2="82" {...S} />
+      <line x1="70" y1="98" x2="60" y2="195" {...ST} />
+      <line x1="60" y1="195" x2="56" y2="215" {...ST} />
+      <line x1="70" y1="98" x2="80" y2="195" {...ST} />
+      <line x1="80" y1="195" x2="84" y2="215" {...ST} />
+    </PoseSVG>
+  );
+}
+
+// ── 11. Men's Physique Side ─────────────────────────────────────────────────
+export function MPSideRef() {
+  return (
+    <PoseSVG>
+      <circle cx="70" cy="18" r={HEAD_R} {...S} fill="rgba(200,255,0,0.15)" />
+      <line x1="70" y1="26" x2="70" y2="36" {...S} />
+      <line x1="70" y1="36" x2="70" y2="100" {...S} />
+      <line x1="70" y1="36" x2="32" y2="42" {...S} />
+      <line x1="32" y1="42" x2="28" y2="75" {...S} />
+      <line x1="70" y1="34" x2="110" y2="40" {...S} />
+      <line x1="110" y1="40" x2="106" y2="80" {...S} />
+      <line x1="66" y1="100" x2="58" y2="185" {...ST} />
+      <line x1="58" y1="185" x2="54" y2="210" {...ST} />
+      <path d="M68 60 Q82 80 68 100" {...FAINT} />
+    </PoseSVG>
+  );
+}
+
+// ── GIF/SVG-based pose reference (loads from /exercise-gifs/) ───────────────
+// Falls back to SVG component if image not found.
+function makePoseImgRef(poseId, FallbackSVG) {
+  return function PoseImgRef() {
     const [failed, setFailed] = useState(false);
     if (failed) return <FallbackSVG />;
     return (
       <img
-        src={`/exercise-gifs/${poseId}.gif`}
+        src={`/exercise-gifs/${poseId}.svg?v=3`}
         alt={poseId}
-        onError={() => setFailed(true)}
+        onError={(e) => {
+          // Try GIF as fallback
+          e.target.src = `/exercise-gifs/${poseId}.gif?v=3`;
+          e.target.onerror = () => setFailed(true);
+        }}
         style={{
           width: 140,
           height: 220,
@@ -263,15 +302,15 @@ function makePoseGifRef(poseId, FallbackSVG) {
 
 // ── Map pose ID to component ─────────────────────────────────────────────
 export const POSE_REFS = {
-  'pose-front-double-biceps': makePoseGifRef('pose-front-double-biceps', FrontDoubleBicepsRef),
-  'pose-front-lat-spread':    makePoseGifRef('pose-front-lat-spread',    FrontLatSpreadRef),
-  'pose-side-chest':          makePoseGifRef('pose-side-chest',          SideChestRef),
-  'pose-side-triceps':        makePoseGifRef('pose-side-triceps',        SideChestRef),
-  'pose-abs-thighs':          makePoseGifRef('pose-abs-thighs',          AbsThighsRef),
-  'pose-most-muscular':       makePoseGifRef('pose-most-muscular',       MostMuscularRef),
-  'pose-back-double-biceps':  makePoseGifRef('pose-back-double-biceps',  MPBackRef),
-  'pose-back-lat-spread':     makePoseGifRef('pose-back-lat-spread',     MPBackRef),
-  'pose-mp-front':            makePoseGifRef('pose-mp-front',            MPFrontRef),
-  'pose-mp-back':             makePoseGifRef('pose-mp-back',             MPBackRef),
-  'pose-mp-side':             makePoseGifRef('pose-mp-side',             SideChestRef),
+  'pose-front-double-biceps': makePoseImgRef('pose-front-double-biceps', FrontDoubleBicepsRef),
+  'pose-front-lat-spread':    makePoseImgRef('pose-front-lat-spread',    FrontLatSpreadRef),
+  'pose-side-chest':          makePoseImgRef('pose-side-chest',          SideChestRef),
+  'pose-side-triceps':        makePoseImgRef('pose-side-triceps',        SideTricepsRef),
+  'pose-abs-thighs':          makePoseImgRef('pose-abs-thighs',          AbsThighsRef),
+  'pose-most-muscular':       makePoseImgRef('pose-most-muscular',       MostMuscularRef),
+  'pose-back-double-biceps':  makePoseImgRef('pose-back-double-biceps',  BackDoubleBicepsRef),
+  'pose-back-lat-spread':     makePoseImgRef('pose-back-lat-spread',     BackLatSpreadRef),
+  'pose-mp-front':            makePoseImgRef('pose-mp-front',            MPFrontRef),
+  'pose-mp-back':             makePoseImgRef('pose-mp-back',             MPBackRef),
+  'pose-mp-side':             makePoseImgRef('pose-mp-side',             MPSideRef),
 };

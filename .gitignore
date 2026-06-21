@@ -36,6 +36,12 @@ desktop.ini
 # Misc
 *.log
 
+# Pose reference assets (AI-generated, user-specific)
+poses/
+gifs/
+
 .vercel/
 build/
 
+.vercel
+.env*
