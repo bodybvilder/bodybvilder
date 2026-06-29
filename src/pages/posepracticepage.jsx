@@ -24,6 +24,7 @@ export default function PosePracticePage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const poseId = searchParams.get('exercise') || 'pose-front-double-biceps';
+  const autoStart = searchParams.get('autostart') === '1';
   const pose = getExerciseById(poseId);
 
   const videoRef = useRef(null);
@@ -50,6 +51,22 @@ export default function PosePracticePage() {
     'user',
     poseId
   );
+
+  // Auto-start after mount when navigated with ?autostart=1
+  const autoStartFiredRef = useRef(false);
+  useEffect(() => {
+    if (autoStart && !autoStartFiredRef.current) {
+      autoStartFiredRef.current = true;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          resetRepCount();
+          setHoldCount(0);
+          setStarted(true);
+          setPhase('idle');
+        });
+      });
+    }
+  }, []); // eslint-disable-line
 
   // Update score + hold logic
   useEffect(() => {
@@ -175,6 +192,8 @@ export default function PosePracticePage() {
           display: 'flex', flexDirection: 'column',
           overflowY: 'auto',
           overflowX: 'hidden',
+          opacity: autoStart ? 0 : 1,
+          pointerEvents: autoStart ? 'none' : 'auto',
         }}>
           {/* Back */}
           <div style={{ padding: '20px 20px 0' }}>

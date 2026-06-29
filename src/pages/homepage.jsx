@@ -800,7 +800,7 @@ function ExerciseCard({ exercise, index, navigate }) {
 
   return (
     <div
-      onClick={() => { hapticTap(); navigate(exercise.isPose ? `/pose?exercise=${exercise.id}` : `/workout?exercise=${exercise.id}&autostart=1`); }}
+      onClick={() => { hapticTap(); navigate(exercise.isPose ? `/pose?exercise=${exercise.id}&autostart=1` : `/workout?exercise=${exercise.id}&autostart=1`); }}
       onPointerDown={() => setPressed(true)}
       onPointerUp={() => setPressed(false)}
       onPointerLeave={() => setPressed(false)}
