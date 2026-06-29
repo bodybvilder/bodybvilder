@@ -654,26 +654,27 @@ export default function WorkoutPage() {
   }, [isWorkoutActive]);
 
   // ── Auto-start after mount when navigated with ?autostart=1 ──────────
-  // IMPORTANT: We cannot set cameraEnabled=true in useState because the video
-  // element doesn't exist in the DOM yet on first render (it only renders inside
-  // the active camera screen which needs isWorkoutActive=true).
-  // Solution: wait 2 rAF frames after mount so React has committed the DOM,
-  // THEN flip both flags. This is the only reliable cross-browser approach.
+  // We must ensure video element is in the DOM BEFORE enabling the camera hook.
+  // Sequence:
+  //   rAF1: React commits pre-start screen (video el exists in pre-start DOM? No — only in active screen)
+  //   So we flip isWorkoutActive first to mount the video element, THEN enable camera on next frame.
   const autoStartFiredRef = useRef(false);
   useEffect(() => {
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
 
     if (autoStart && !autoStartFiredRef.current) {
       autoStartFiredRef.current = true;
-      // rAF × 2 = wait for browser to paint first frame, then start
       requestAnimationFrame(() => {
+        // Frame 1: flip to active screen so video element mounts in DOM
+        setIsWorkoutActive(true);
+        setWorkoutStartTime(Date.now());
+        setShowControls(false);
+        wLog.startSession(exerciseId, exercise?.name || exerciseId);
+
         requestAnimationFrame(() => {
+          // Frame 2: video element is now in DOM, safe to start camera
           cameraPreloadedRef.current = true;
           setCameraEnabled(true);
-          setWorkoutStartTime(Date.now());
-          setIsWorkoutActive(true);
-          setShowControls(false);
-          wLog.startSession(exerciseId, exercise?.name || exerciseId);
         });
       });
     }

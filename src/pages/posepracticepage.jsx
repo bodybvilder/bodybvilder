@@ -44,10 +44,14 @@ export default function PosePracticePage() {
   const holdStartRef = useRef(null);
   const HOLD_REQUIRED_MS = 2500; // hold for 2.5s to count
 
+  // cameraEnabled is separate from started — camera must only be enabled
+  // after the video element is in the DOM (i.e. after started=true renders)
+  const [cameraEnabled, setCameraEnabled] = useState(false);
+
   const { isReady, score, feedback: aiFeedback, resetRepCount } = usePoseDetection(
     videoRef,
     canvasRef,
-    started,
+    cameraEnabled,
     'user',
     poseId
   );
@@ -58,11 +62,15 @@ export default function PosePracticePage() {
     if (autoStart && !autoStartFiredRef.current) {
       autoStartFiredRef.current = true;
       requestAnimationFrame(() => {
+        // Frame 1: flip UI to active so video element mounts in DOM
+        setStarted(true);
+        setPhase('idle');
+        setHoldCount(0);
+
         requestAnimationFrame(() => {
+          // Frame 2: video in DOM, safe to enable camera
+          setCameraEnabled(true);
           resetRepCount();
-          setHoldCount(0);
-          setStarted(true);
-          setPhase('idle');
         });
       });
     }
@@ -112,6 +120,10 @@ export default function PosePracticePage() {
     setBestScore(JSON.parse(localStorage.getItem(`bv-pose-${poseId}`) || '0'));
     setStarted(true);
     setPhase('idle');
+    // Enable camera on next frame so video element is in DOM first
+    requestAnimationFrame(() => {
+      setCameraEnabled(true);
+    });
   }, [resetRepCount, poseId]);
 
   const PoseRef = POSE_REFS[poseId];
