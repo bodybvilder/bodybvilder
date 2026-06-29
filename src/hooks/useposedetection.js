@@ -1214,34 +1214,59 @@ export function usePoseDetection(videoRef, canvasRef, enabled, facingMode = 'use
 
     const initPose = async () => {
       try {
-        // ── Request camera permission first (required for Android runtime) ─
-        if (navigator.permissions) {
-          try {
-            const perm = await navigator.permissions.query({ name: 'camera' });
-            if (perm.state === 'denied') {
-              if (!cleanedUp) setFeedback('Camera permission denied — enable in Settings');
-              return;
-            }
-          } catch (e) { /* permissions API not available, continue */ }
-        }
-        // Poll up to 8 seconds (80 × 100ms). This is more reliable than
-        // a fixed setTimeout because React may take variable time to mount,
-        // especially on autoStart where the active screen renders after rAF.
+        // ── STEP 1: Poll for DOM refs (max 5s) ────────────────────────
         let attempts = 0;
-        while (attempts < 80) {
-          if (
-            videoRef.current &&
-            canvasRef.current &&
-            !cleanedUp
-          ) break;
+        while (attempts < 50) {
+          if (videoRef.current && canvasRef.current && !cleanedUp) break;
           await new Promise(r => setTimeout(r, 100));
           attempts++;
         }
-        if (cleanedUp || !videoRef.current || !canvasRef.current) return;
+        if (cleanedUp || !videoRef.current || !canvasRef.current) {
+          if (!cleanedUp) setFeedback('Camera error — try again');
+          return;
+        }
 
-        // ── Load MediaPipe from bundled local files (works offline in APK) ─
-        // Dynamic import('@mediapipe/pose') requires network in WebView.
-        // Script injection loads from /mediapipe/ which is bundled in the APK.
+        // ── STEP 2: getUserMedia FIRST — while user gesture is still fresh ─
+        // CRITICAL: must happen before any async script loading.
+        // Chrome invalidates the user gesture token after ~1 second.
+        let stream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: facingModeRef.current }, width: { ideal: 640 }, height: { ideal: 480 } },
+            audio: false,
+          });
+        } catch (e1) {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: { ideal: facingModeRef.current } },
+              audio: false,
+            });
+          } catch (e2) {
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            } catch (e3) {
+              if (!cleanedUp) setFeedback('Camera permission denied — tap Allow when prompted');
+              return;
+            }
+          }
+        }
+
+        if (cleanedUp) { stream.getTracks().forEach(t => t.stop()); return; }
+
+        // Attach stream to video element immediately so user sees themselves
+        const video = videoRef.current;
+        video.srcObject = stream;
+        video.setAttribute('playsinline', 'true');
+        video.muted = true;
+        await new Promise((resolve) => {
+          video.onloadedmetadata = resolve;
+          setTimeout(resolve, 3000);
+        });
+        await video.play().catch(() => {});
+
+        if (cleanedUp) { stream.getTracks().forEach(t => t.stop()); return; }
+
+        // ── STEP 3: Load MediaPipe AFTER camera is already streaming ─
         const loadScript = (src) => new Promise((resolve, reject) => {
           if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
           const s = document.createElement('script');
@@ -1358,55 +1383,8 @@ export function usePoseDetection(videoRef, canvasRef, enabled, facingMode = 'use
 
         if (cleanedUp || !videoRef.current) return;
 
-        // ── CUSTOM CAMERA INIT (replaces @mediapipe/camera_utils) ────────
-        // camera_utils uses exact width/height constraints which crash iOS Safari.
-        // We call getUserMedia directly with 'ideal' constraints (safe everywhere).
-        const constraints = {
-          video: {
-            facingMode: { ideal: facingModeRef.current },
-            width:  { ideal: 640 },
-            height: { ideal: 480 },
-          },
-          audio: false,
-        };
-
-        let stream;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia(constraints);
-        } catch (e) {
-          // Fallback: try without resolution constraints (older iOS Safari)
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({
-              video: { facingMode: { ideal: facingModeRef.current } },
-              audio: false,
-            });
-          } catch (e2) {
-            // Last resort: just ask for any camera
-            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-          }
-        }
-
-        if (cleanedUp) {
-          stream.getTracks().forEach(t => t.stop());
-          return;
-        }
-
-        const video = videoRef.current;
-        video.srcObject = stream;
-        video.setAttribute('playsinline', 'true');
-        video.muted = true;
-
-        // Wait for video to be ready
-        await new Promise((resolve, reject) => {
-          video.onloadedmetadata = resolve;
-          video.onerror = reject;
-          setTimeout(resolve, 3000); // safety timeout
-        });
-        await video.play().catch(() => {});
-
-        // Wait until video is actually streaming (videoWidth > 0)
-        // This is critical — without this, the first few pose.send() calls
-        // receive a blank frame and MediaPipe never fires onResults.
+        // Video already streaming from STEP 2 above.
+        // Wait until videoWidth > 0 so MediaPipe gets real frames.
         let waitTries = 0;
         while ((!videoRef.current?.videoWidth || videoRef.current.videoWidth === 0) && waitTries < 50) {
           await new Promise(r => setTimeout(r, 100));
