@@ -97,13 +97,9 @@ export default function PosePracticePage() {
     resetRepCount();
     setHoldCount(0);
     setBestScore(JSON.parse(localStorage.getItem(`bv-pose-${poseId}`) || '0'));
-    // Step 1: show camera screen so video element mounts in DOM
     setStarted(true);
     setPhase('idle');
-    // Step 2: wait one frame, then enable camera
-    requestAnimationFrame(() => {
-      setCameraEnabled(true);
-    });
+    setCameraEnabled(true);
   }, [resetRepCount, poseId]);
 
   const PoseRef = POSE_REFS[poseId];

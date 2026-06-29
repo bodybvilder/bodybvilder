@@ -580,9 +580,9 @@ export default function WorkoutPage() {
     window.speechSynthesis.speak(utt);
   }, []);
 
-  // ── usePoseDetection — enabled as soon as camera is turned on ──────────
+  // ── usePoseDetection — enabled only when camera AND workout are both active ─
   const { isReady, score, feedback, repCount, resetRepCount } = usePoseDetection(
-    videoRef, canvasRef, cameraEnabled, facingMode, exerciseId
+    videoRef, canvasRef, cameraEnabled && isWorkoutActive, facingMode, exerciseId
   );
 
   // Speak feedback whenever it changes during active workout
@@ -658,18 +658,13 @@ export default function WorkoutPage() {
 
   // ── Start workout (manual — user pressed Start button) ───────────────
   const handleStart = () => {
-    // Step 1: flip to active screen so video element mounts in DOM
+    setCameraEnabled(true);
     setIsWorkoutActive(true);
     setWorkoutStartTime(Date.now());
     setShowControls(false);
     resetRepCount();
+    handleTap();
     wLog.startSession(exerciseId, exercise?.name || exerciseId);
-
-    // Step 2: wait one frame for React to commit video element, THEN start camera
-    requestAnimationFrame(() => {
-      cameraPreloadedRef.current = true;
-      setCameraEnabled(true);
-    });
   };
 
   // ── Preload camera on first user gesture (pre-start screen) ───────────
@@ -944,7 +939,7 @@ export default function WorkoutPage() {
   }, [isRecording, stopRecording, handleCountdownRecord]);
 
   // ── PRE-START SCREEN ──────────────────────────────────────────────────
-  if (!isWorkoutActive) {
+  if (!cameraEnabled) {
     return (
       <div
         style={{ height: '100dvh', background: 'var(--bg-0)', overflowY: 'auto', position: 'relative', overflow: 'hidden' }}
@@ -957,7 +952,9 @@ export default function WorkoutPage() {
           @keyframes spin { to { transform: rotate(360deg); } }
         `}</style>
 
-        {/* ── Video feed always in DOM (refs must never detach) ── */}
+        {/* video+canvas hidden in DOM so refs are ready before Start is pressed */}
+        <video ref={videoRef} style={{ position: 'fixed', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }} playsInline muted />
+        <canvas ref={canvasRef} style={{ position: 'fixed', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }} />
         {/* Dark gradient overlay so content stays readable */}
         <div style={{
           position: 'absolute', inset: 0,
