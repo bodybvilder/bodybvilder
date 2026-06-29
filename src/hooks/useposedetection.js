@@ -4,18 +4,23 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 // Left:  shoulder=11, elbow=13, wrist=15, hip=23, knee=25, ankle=27
 // Right: shoulder=12, elbow=14, wrist=16, hip=24, knee=26, ankle=28
 
+// Body-only connections (skip face landmarks 0–10 to avoid noisy face lines)
 const POSE_CONNECTIONS = [
-  [0,1],[1,2],[2,3],[3,7],[0,4],[4,5],[5,6],[6,8],
-  [9,10],[11,12],[11,13],[13,15],[15,17],[15,19],[15,21],
-  [17,19],[12,14],[14,16],[16,18],[16,20],[16,22],[18,20],
-  [11,23],[12,24],[23,24],[23,25],[25,27],[27,29],[27,31],
-  [29,31],[24,26],[26,28],[28,30],[28,32],[30,32]
+  // Torso
+  [11,12],[11,23],[12,24],[23,24],
+  // Left arm
+  [11,13],[13,15],[15,17],[15,19],[17,19],
+  // Right arm
+  [12,14],[14,16],[16,18],[16,20],[18,20],
+  // Left leg
+  [23,25],[25,27],[27,29],[27,31],[29,31],
+  // Right leg
+  [24,26],[26,28],[28,30],[28,32],[30,32],
 ];
 
 // ── Thresholds ─────────────────────────────────────────────────────────
-// MediaPipe internal threshold = 0.5, tapi kita pakai 0.4 untuk lebih toleran
-// tapi tetap filter noise yang jelas-jelas invisible
-const VIS_THRESHOLD = 0.4;
+// VIS_THRESHOLD lowered to 0.3 for mobile cameras (especially front cam in poor light)
+const VIS_THRESHOLD = 0.3;
 
 // ── Exercise categories ──────────────────────────────────────────────────
 const ONE_ARM_EXERCISES = [
@@ -72,7 +77,7 @@ const THRESHOLDS = {
   }
 };
 
-export function usePoseDetection(videoRef, canvasRef, enabled, facingMode = 'user') {
+export function usePoseDetection(videoRef, canvasRef, enabled, facingMode = 'user', exerciseId = 'pushup') {
   const [isReady, setIsReady] = useState(false);
   const [score, setScore] = useState(0);
   const [feedback, setFeedback] = useState('');
@@ -85,6 +90,10 @@ export function usePoseDetection(videoRef, canvasRef, enabled, facingMode = 'use
   const scoreHistoryRef = useRef([]);
   const isActiveRef = useRef(true);
   const activeSideRef = useRef('left');
+
+  // Stable ref so onResults closure always reads the latest exerciseId
+  const exerciseIdRef = useRef(exerciseId);
+  useEffect(() => { exerciseIdRef.current = exerciseId; }, [exerciseId]);
 
   // ── Angle between 3 landmarks (degrees) ────────────────────────────────
   const calculateAngle = useCallback((a, b, c) => {
@@ -184,7 +193,21 @@ export function usePoseDetection(videoRef, canvasRef, enabled, facingMode = 'use
     const shouldersVisible = isVisible(lm, 11) && isVisible(lm, 12);
     const hipsVisible = isVisible(lm, 23) && isVisible(lm, 24);
     
-    if (!shouldersVisible || !hipsVisible) {
+    // For arm-only exercises (curl, raise, etc.) only shoulders need to be visible
+    const isArmOnlyExercise = ONE_ARM_EXERCISES.includes(exerciseId) ||
+      ['cable-curl','barbell-curl','dumbbell-fly','cable-fly','face-pull',
+       'cable-lateral-raise','overhead-press','arnold-press','incline-dumbbell-press',
+       'tricep-pushdown','skull-crusher','cable-kickback','lat-pulldown',
+       'barbell-row','dumbbell-row','seated-cable-row'].includes(exerciseId);
+    
+    if (!shouldersVisible) {
+      return { 
+        score: 0, 
+        feedback: 'Show upper body to camera', 
+        side: activeSideRef.current 
+      };
+    }
+    if (!isArmOnlyExercise && !hipsVisible) {
       return { 
         score: 0, 
         feedback: 'Step back — show full body', 
@@ -252,7 +275,7 @@ export function usePoseDetection(videoRef, canvasRef, enabled, facingMode = 'use
           feedbackText = 'Curl up'; 
         }
 
-        repCounter(peaked, extended, 600, 'pull');
+        repCounter(peaked, extended, 400, 'pull');
         return { score: formScore, feedback: feedbackText, side };
       }
 
@@ -922,16 +945,7 @@ export function usePoseDetection(videoRef, canvasRef, enabled, facingMode = 'use
       else if (peaked) { formScore = 80; feedbackText = 'Elbow fixed'; }
       else if (!elbowStable) { formScore = 65; feedbackText = 'Pin elbows'; }
       else { formScore = 60; feedbackText = 'Curl up'; }
-      const now = Date.now();
-      if (peaked && repStateRef.current.phase === 'down' && now - repStateRef.current.lastTime > 500) {
-        repStateRef.current.phase = 'up';
-      } else if (extended && repStateRef.current.phase === 'up') {
-        repStateRef.current.phase = 'down';
-        repStateRef.current.count += 1;
-        repStateRef.current.lastTime = now;
-      } else if (repStateRef.current.phase === 'ready' && extended) {
-        repStateRef.current.phase = 'down';
-      }
+      repCounter(peaked, extended, 500, 'pull');
     }
 
     // ── TRICEP PUSHDOWN / SKULL CRUSHER / CABLE KICKBACK ────────────
@@ -1160,66 +1174,175 @@ export function usePoseDetection(videoRef, canvasRef, enabled, facingMode = 'use
     return { score: formScore, feedback: feedbackText, side: activeSideRef.current };
   }, [calculateAngle, isVisible, repCounter, detectBestArm, getArmLandmarks]);
 
-  // ── MediaPipe init & cleanup ───────────────────────────────────────────
+  // ── Stable ref to latest analyzeForm ──────────────────────────────────
+  // Prevents useEffect (camera init) from re-running every frame when
+  // analyzeForm identity changes, which was resetting repStateRef & killing counts.
+  const analyzeFormRef = useRef(analyzeForm);
   useEffect(() => {
-    if (!enabled || !videoRef.current) {
+    analyzeFormRef.current = analyzeForm;
+  }, [analyzeForm]);
+
+  // ── Reset rep state whenever the exercise changes mid-session ──────────
+  useEffect(() => {
+    repStateRef.current    = { phase: 'ready', count: 0, lastTime: 0 };
+    scoreHistoryRef.current = [];
+    activeSideRef.current   = 'left';
+    setRepCount(0);
+    setScore(0);
+    setFeedback('Get in position...');
+    setActiveSide('left');
+  }, [exerciseId]);
+
+  // ── MediaPipe init & cleanup ───────────────────────────────────────────
+  // Keep a stable ref to facingMode so onFrame closure doesn't go stale
+  const facingModeRef = useRef(facingMode);
+  useEffect(() => { facingModeRef.current = facingMode; }, [facingMode]);
+
+  useEffect(() => {
+    if (!enabled) {
       setIsReady(false);
       return;
     }
 
     isActiveRef.current = true;
+    let cleanedUp = false;
+
+    // Reset all state when starting a new session
+    repStateRef.current    = { phase: 'ready', count: 0, lastTime: 0 };
+    scoreHistoryRef.current = [];
+    activeSideRef.current   = 'left';
 
     const initPose = async () => {
       try {
-        const { Pose } = await import('@mediapipe/pose');
-        const { Camera } = await import('@mediapipe/camera_utils');
-        const { drawConnectors, drawLandmarks } = await import('@mediapipe/drawing_utils');
+        // ── Request camera permission first (required for Android runtime) ─
+        if (navigator.permissions) {
+          try {
+            const perm = await navigator.permissions.query({ name: 'camera' });
+            if (perm.state === 'denied') {
+              if (!cleanedUp) setFeedback('Camera permission denied — enable in Settings');
+              return;
+            }
+          } catch (e) { /* permissions API not available, continue */ }
+        }
+        // Poll up to 8 seconds (80 × 100ms). This is more reliable than
+        // a fixed setTimeout because React may take variable time to mount,
+        // especially on autoStart where the active screen renders after rAF.
+        let attempts = 0;
+        while (attempts < 80) {
+          if (
+            videoRef.current &&
+            canvasRef.current &&
+            !cleanedUp
+          ) break;
+          await new Promise(r => setTimeout(r, 100));
+          attempts++;
+        }
+        if (cleanedUp || !videoRef.current || !canvasRef.current) return;
 
-        const pose = new Pose({
-          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+        // ── Load MediaPipe from bundled local files (works offline in APK) ─
+        // Dynamic import('@mediapipe/pose') requires network in WebView.
+        // Script injection loads from /mediapipe/ which is bundled in the APK.
+        const loadScript = (src) => new Promise((resolve, reject) => {
+          if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+          const s = document.createElement('script');
+          s.src = src;
+          s.onload = resolve;
+          s.onerror = () => reject(new Error(`Failed to load: ${src}`));
+          document.head.appendChild(s);
+        });
+
+        // Load pose.js from local bundle — exposes window.Pose
+        await loadScript('/mediapipe/pose.js');
+        if (cleanedUp) return;
+
+        const PoseClass = window.Pose;
+        if (!PoseClass) throw new Error('Pose not found — local MediaPipe failed');
+
+        // Load drawing_utils from local bundle if available, else from import
+        let drawConnectors, drawLandmarks;
+        try {
+          await loadScript('/mediapipe/drawing_utils.js');
+          if (window.drawConnectors && window.drawLandmarks) {
+            drawConnectors = window.drawConnectors;
+            drawLandmarks  = window.drawLandmarks;
+          } else { throw new Error('not in window'); }
+        } catch {
+          // Fallback: import from npm (online only)
+          const du = await import('@mediapipe/drawing_utils');
+          drawConnectors = du.drawConnectors;
+          drawLandmarks  = du.drawLandmarks;
+        }
+
+        if (cleanedUp) return;
+
+        const pose = new PoseClass({
+          locateFile: (file) => `/mediapipe/${file}`
         });
 
         pose.setOptions({
-          modelComplexity: 1,
+          modelComplexity: 0,        // LITE model — 3× faster init, still accurate enough for gym exercises
           smoothLandmarks: true,
           enableSegmentation: false,
-          minDetectionConfidence: 0.55,
-          minTrackingConfidence: 0.55
+          smoothSegmentation: false,
+          minDetectionConfidence: 0.45,
+          minTrackingConfidence: 0.35,
         });
 
         pose.onResults((results) => {
           if (!isActiveRef.current) return;
 
           const canvas = canvasRef.current;
-          const video = videoRef.current;
-          if (!canvas || !video || !video.videoWidth) return;
+          const video  = videoRef.current;
+          if (!canvas || !video) return;
+
+          // Sync canvas size to video resolution
+          const vw = video.videoWidth  || 640;
+          const vh = video.videoHeight || 480;
+          if (canvas.width !== vw)  canvas.width  = vw;
+          if (canvas.height !== vh) canvas.height = vh;
 
           const ctx = canvas.getContext('2d');
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
           if (results.poseLandmarks) {
-            // ── FIXED: Static radius, no callback ──────────────────────
-            drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {
-              color: 'rgba(200, 255, 0, 0.5)',
-              lineWidth: 2
+            // Mirror landmarks horizontally for front cam so skeleton aligns
+            // with the CSS-flipped video element
+            const landmarks = facingModeRef.current === 'user'
+              ? results.poseLandmarks.map(lm => ({ ...lm, x: 1 - lm.x }))
+              : results.poseLandmarks;
+
+            // Draw skeleton bones — visibilityMin:0 forces all joints to render
+            drawConnectors(ctx, landmarks, POSE_CONNECTIONS, {
+              color: 'rgba(200,255,0,0.75)',
+              lineWidth: 3,
+              visibilityMin: 0,
             });
-            
-            drawLandmarks(ctx, results.poseLandmarks, {
-              color: 'var(--accent, #C8FF00)',
-              fillColor: 'rgba(200, 255, 0, 0.3)',
+
+            // Draw joint dots (body only — hide face landmarks 0–10)
+            const bodyLandmarks = landmarks.map((lm, i) =>
+              i >= 11 ? lm : { ...lm, visibility: -1 }
+            );
+            drawLandmarks(ctx, bodyLandmarks, {
+              color: '#C8FF00',
+              fillColor: 'rgba(200,255,0,0.55)',
               lineWidth: 1,
-              radius: 3  // ← STATIC, not callback
+              visibilityMin: 0,
+              radius: (data) => {
+                const idx = data.index;
+                if ([11,12,23,24].includes(idx)) return 7;
+                if ([13,14,25,26].includes(idx)) return 6;
+                if ([15,16,27,28].includes(idx)) return 5;
+                return 3;
+              },
             });
 
-            const exerciseId = window.currentExerciseId || 'pushup';
-            const analysis = analyzeForm(results.poseLandmarks, exerciseId);
+            // Always use original (unmirrored) landmarks for form analysis
+            const exerciseId = exerciseIdRef.current || 'pushup';
+            const analysis = analyzeFormRef.current(results.poseLandmarks, exerciseId);
 
-            // ── FIXED: 5 frame history for faster response ───────────
+            // 3-frame smoothing
             scoreHistoryRef.current.push(analysis.score);
-            if (scoreHistoryRef.current.length > 5) scoreHistoryRef.current.shift();
-            
+            if (scoreHistoryRef.current.length > 3) scoreHistoryRef.current.shift();
             const avgScore = Math.round(
               scoreHistoryRef.current.reduce((a, b) => a + b, 0) / scoreHistoryRef.current.length
             );
@@ -1233,26 +1356,103 @@ export function usePoseDetection(videoRef, canvasRef, enabled, facingMode = 'use
 
         poseRef.current = pose;
 
-        const camera = new Camera(videoRef.current, {
-          onFrame: async () => {
-            if (isActiveRef.current && poseRef.current && videoRef.current) {
-              try {
-                await poseRef.current.send({ image: videoRef.current });
-              } catch (e) { /* silent frame drop */ }
-            }
-          },
-          width: 640,
-          height: 480,
-          facingMode, // 'user' = front, 'environment' = back
-        });
+        if (cleanedUp || !videoRef.current) return;
 
-        cameraRef.current = camera;
-        await camera.start();
-        setIsReady(true);
+        // ── CUSTOM CAMERA INIT (replaces @mediapipe/camera_utils) ────────
+        // camera_utils uses exact width/height constraints which crash iOS Safari.
+        // We call getUserMedia directly with 'ideal' constraints (safe everywhere).
+        const constraints = {
+          video: {
+            facingMode: { ideal: facingModeRef.current },
+            width:  { ideal: 640 },
+            height: { ideal: 480 },
+          },
+          audio: false,
+        };
+
+        let stream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (e) {
+          // Fallback: try without resolution constraints (older iOS Safari)
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: { ideal: facingModeRef.current } },
+              audio: false,
+            });
+          } catch (e2) {
+            // Last resort: just ask for any camera
+            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          }
+        }
+
+        if (cleanedUp) {
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
+
+        const video = videoRef.current;
+        video.srcObject = stream;
+        video.setAttribute('playsinline', 'true');
+        video.muted = true;
+
+        // Wait for video to be ready
+        await new Promise((resolve, reject) => {
+          video.onloadedmetadata = resolve;
+          video.onerror = reject;
+          setTimeout(resolve, 3000); // safety timeout
+        });
+        await video.play().catch(() => {});
+
+        // Wait until video is actually streaming (videoWidth > 0)
+        // This is critical — without this, the first few pose.send() calls
+        // receive a blank frame and MediaPipe never fires onResults.
+        let waitTries = 0;
+        while ((!videoRef.current?.videoWidth || videoRef.current.videoWidth === 0) && waitTries < 50) {
+          await new Promise(r => setTimeout(r, 100));
+          waitTries++;
+        }
+
+        if (cleanedUp) {
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
+
+        // ── FRAME LOOP — feeds frames to MediaPipe at ~30fps ─────────────
+        // Using setInterval instead of async RAF to avoid frame queue overflow.
+        // RAF with async/await can send 60+ frames/s before MediaPipe processes
+        // them, causing the results callback to never fire.
+        let frameInterval;
+        let isSending = false; // guard: don't queue multiple sends
+
+        const sendFrame = () => {
+          if (!isActiveRef.current || cleanedUp || isSending) return;
+          const vid = videoRef.current;
+          const p   = poseRef.current;
+          if (!vid || vid.readyState < 2 || !p) return;
+
+          isSending = true;
+          p.send({ image: vid })
+            .catch(() => {})
+            .finally(() => { isSending = false; });
+        };
+
+        // Store interval handle for cleanup
+        cameraRef.current = {
+          stop: () => {
+            clearInterval(frameInterval);
+            stream.getTracks().forEach(t => t.stop());
+            if (videoRef.current) videoRef.current.srcObject = null;
+          },
+        };
+
+        // Start at 30fps — MediaPipe processes ~15-20fps on mobile anyway
+        frameInterval = setInterval(sendFrame, 1000 / 30);
+        if (!cleanedUp) setIsReady(true);
 
       } catch (err) {
         console.error('Pose init error:', err);
-        setFeedback('Camera error — check permissions');
+        if (!cleanedUp) setFeedback('Camera error — check permissions');
         setIsReady(false);
       }
     };
@@ -1260,11 +1460,14 @@ export function usePoseDetection(videoRef, canvasRef, enabled, facingMode = 'use
     initPose();
 
     return () => {
+      cleanedUp = true;
       isActiveRef.current = false;
       try { cameraRef.current?.stop(); } catch (e) {}
       try { poseRef.current?.close(); } catch (e) {}
+      poseRef.current   = null;
+      cameraRef.current = null;
     };
-  }, [enabled, videoRef, canvasRef, analyzeForm]);
+  }, [enabled, facingMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Reset function ─────────────────────────────────────────────────────
   const resetRepCount = useCallback(() => {

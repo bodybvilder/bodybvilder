@@ -43,10 +43,12 @@ export default function PosePracticePage() {
   const holdStartRef = useRef(null);
   const HOLD_REQUIRED_MS = 2500; // hold for 2.5s to count
 
-  const { score, feedback: aiFeedback, resetRepCount } = usePoseDetection(
+  const { isReady, score, feedback: aiFeedback, resetRepCount } = usePoseDetection(
     videoRef,
     canvasRef,
-    started
+    started,
+    'user',
+    poseId
   );
 
   // Update score + hold logic
@@ -83,7 +85,7 @@ export default function PosePracticePage() {
     } else {
       holdStartRef.current = null;
       setHoldProgress(0);
-      setPhase(score > 30 ? 'idle' : 'idle');
+      setPhase('idle');
     }
   }, [score, aiFeedback, started, bestScore, poseId]);
 
@@ -112,17 +114,17 @@ export default function PosePracticePage() {
           position: 'absolute', inset: 0,
           width: '100%', height: '100%',
           objectFit: 'cover',
-          transform: 'scaleX(-1)',
+          transform: 'scaleX(-1)',   /* mirror for selfie view */
           opacity: started ? 1 : 0,
         }}
         playsInline muted
       />
+      {/* Canvas stays unflipped — landmarks are mirrored in the hook */}
       <canvas
         ref={canvasRef}
         style={{
           position: 'absolute', inset: 0,
           width: '100%', height: '100%',
-          transform: 'scaleX(-1)',
           pointerEvents: 'none',
           opacity: started ? 1 : 0,
         }}

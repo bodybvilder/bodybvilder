@@ -78,7 +78,7 @@ export default function PlanBuilderPage() {
   };
 
   return (
-    <div style={{ minHeight: '100dvh', background: 'var(--bg-0)', paddingBottom: '80px' }}>
+    <div style={{ minHeight: 'max-content', background: 'var(--bg-0)', paddingBottom: 'var(--page-bottom-pad)' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '20px 20px 16px', position: 'sticky', top: 0, zIndex: 40, background: 'var(--bg-0)' }}>
@@ -318,7 +318,7 @@ export default function PlanBuilderPage() {
                         )}
                       </div>
                       <button
-                        onClick={() => navigate(`/workout?exercise=${ex.exerciseId}`)}
+                        onClick={() => navigate(`/workout?exercise=${ex.exerciseId}&autostart=1`)}
                         style={{
                           width: '32px', height: '32px', borderRadius: '50%',
                           background: 'var(--accent)', border: 'none',
@@ -337,7 +337,7 @@ export default function PlanBuilderPage() {
               <button
                 onClick={() => {
                   const first = plan.days[activeDay].exercises?.[0];
-                  if (first) navigate(`/workout?exercise=${first.exerciseId}`);
+                  if (first) navigate(`/workout?exercise=${first.exerciseId}&autostart=1`);
                 }}
                 style={{
                   width: '100%', padding: '16px', borderRadius: '16px', border: 'none',
@@ -369,3 +369,5 @@ export default function PlanBuilderPage() {
     </div>
   );
 }
+
+

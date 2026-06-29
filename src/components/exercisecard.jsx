@@ -13,7 +13,7 @@ export default function ExerciseCard({ exercise }) {
   
   return (
     <div
-      onClick={() => navigate(`/workout?exercise=${exercise.id}`)}
+      onClick={() => navigate(`/workout?exercise=${exercise.id}&autostart=1`)}
       className="fade-in"
       style={{
         background: 'var(--bg-secondary)',

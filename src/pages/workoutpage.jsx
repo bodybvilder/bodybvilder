@@ -4,6 +4,7 @@ import { usePoseDetection } from '../hooks/useposedetection';
 import SkeletonOverlay from '../components/skeletonoverlay';
 import WorkoutTimer from '../components/workouttimer';
 import ShareCard from '../components/sharecard';
+import WorkoutSummary from '../components/workoutsummary';
 import MuscleDiagram, { MuscleList } from '../components/musclediagram';
 import ExerciseGif from '../components/exercisegif';
 import SmartRestTimer from '../components/resttimer';
@@ -13,6 +14,7 @@ import ExerciseIcon from '../components/exerciseicons';
 import { useBodyProfile } from '../hooks/useBodyProfile';
 import SmartBurnEngine from '../engine/SmartBurnEngine';
 import CalorieBurnDisplay from '../components/calorieburndisplay';
+import useWorkoutLog, { getProgressionSuggestion, getExerciseSessions } from '../hooks/useWorkoutLog';
 
 // ── Icons ──────────────────────────────────────────────────────────────────
 const ArrowLeftIcon = () => (
@@ -152,101 +154,218 @@ function PRCelebration({ weight, unit, visible, onDone }) {
   );
 }
 
-// ── Strength Logger (set-by-set weight log) ────────────────────────────────
-function StrengthLogger({ exerciseId, exerciseName, currentSet, targetSets, targetReps, onNewPR }) {
-  const STORAGE_KEY = 'bv-strength-log';
-  const [sets, setSets] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      return saved[exerciseId]?.today || [];
-    } catch { return []; }
-  });
-  const [weight, setWeight] = useState('');
-  const [unit, setUnit] = useState('kg');
-  const [open, setOpen] = useState(false);
+// ── Progression Badge (pre-start screen) ──────────────────────────────────
+// Shows last session stats + suggested weight for this session
+function ProgressionBadge({ exerciseId, targetReps }) {
+  const suggestion = getProgressionSuggestion(exerciseId, targetReps);
+  const sessions   = getExerciseSessions(exerciseId, 1);
+  const last       = sessions[0];
+  if (!last) return null;
 
-  const logSet = () => {
-    if (!weight) return;
-    const entry = { set: currentSet, weight: parseFloat(weight), unit, reps: targetReps, date: new Date().toISOString() };
-    const updated = [...sets, entry];
-    setSets(updated);
-    setWeight('');
-    // Persist
-    try {
-      const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      if (!all[exerciseId]) all[exerciseId] = {};
-      all[exerciseId].today = updated;
-      all[exerciseId].lastDate = new Date().toDateString();
-      // Keep history for PR tracking
-      if (!all[exerciseId].history) all[exerciseId].history = [];
-      const maxWeight = Math.max(...updated.map(s => s.weight));
-      const lastPR = all[exerciseId].history[0]?.maxWeight || 0;
-      if (maxWeight > lastPR) {
-        all[exerciseId].history.unshift({ date: new Date().toISOString(), maxWeight, unit });
-        all[exerciseId].history = all[exerciseId].history.slice(0, 20);
-        // 🔥 Fire PR celebration
-        onNewPR?.(maxWeight, unit);
-      }
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-    } catch (e) {}
-  };
-
-  // Previous best
-  const prevBest = (() => {
-    try {
-      const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      const h = all[exerciseId]?.history;
-      if (h?.length > 0) return `${h[0].maxWeight} ${h[0].unit}`;
-    } catch {}
-    return null;
-  })();
+  const lastDate = new Date(last.date);
+  const daysAgo  = Math.floor((Date.now() - lastDate.getTime()) / 86400000);
+  const dateLabel = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo}d ago`;
+  const lastMaxWeight = last.sets?.length
+    ? Math.max(...last.sets.map(s => s.weight || 0))
+    : null;
+  const lastUnit = last.sets?.[0]?.unit || 'kg';
 
   return (
-    <div style={{ marginBottom: '8px' }}>
-      <button onClick={() => setOpen(v => !v)}
-        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: '14px', border: `1px solid ${open ? 'rgba(200,255,0,0.3)' : 'rgba(255,255,255,0.1)'}`, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(12px)', color: '#fff', cursor: 'pointer', fontFamily: 'inherit', transition: 'border-color 0.15s ease' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round"><path d="M6 3v7a6 6 0 006 6 6 6 0 006-6V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg>
-          <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.02em' }}>Log Weight</span>
-          {sets.length > 0 && <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-3)', background: 'rgba(255,255,255,0.1)', borderRadius: '99px', padding: '1px 7px' }}>{sets.length} sets</span>}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {prevBest && <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>PR: {prevBest}</span>}
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="2.5" strokeLinecap="round" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
-      </button>
+    <div style={{
+      background: 'var(--bg-1)', border: '1px solid var(--border)',
+      borderRadius: '16px', padding: '14px 16px', marginBottom: '16px',
+      animation: 'fadeUp 0.4s 0.15s both',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round">
+          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+          <polyline points="17 6 23 6 23 12"/>
+        </svg>
+        <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-2)', letterSpacing: '0.07em', textTransform: 'uppercase' }}>
+          Last Session · {dateLabel}
+        </span>
+      </div>
 
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
+        {/* Last weight */}
+        {lastMaxWeight != null && (
+          <div style={{ flex: 1, background: 'var(--bg-2)', borderRadius: '12px', padding: '10px', textAlign: 'center' }}>
+            <div style={{ fontSize: '10px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '3px' }}>Last Weight</div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--text-0)', letterSpacing: '-0.03em', lineHeight: 1 }}>
+              {lastMaxWeight}<span style={{ fontSize: '11px', color: 'var(--text-3)', marginLeft: '2px' }}>{lastUnit}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Sets done */}
+        <div style={{ flex: 1, background: 'var(--bg-2)', borderRadius: '12px', padding: '10px', textAlign: 'center' }}>
+          <div style={{ fontSize: '10px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '3px' }}>Sets Done</div>
+          <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--text-0)', letterSpacing: '-0.03em', lineHeight: 1 }}>
+            {last.sets?.length || 0}
+          </div>
+        </div>
+
+        {/* Suggestion */}
+        {suggestion && (
+          <div style={{ flex: 1.4, background: 'var(--accent-dim)', border: '1px solid rgba(200,255,0,0.2)', borderRadius: '12px', padding: '10px', textAlign: 'center' }}>
+            <div style={{ fontSize: '10px', color: 'var(--accent)', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '3px' }}>Try Today</div>
+            <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--accent)', letterSpacing: '-0.03em', lineHeight: 1 }}>
+              {suggestion.suggestedWeight}<span style={{ fontSize: '11px', marginLeft: '2px' }}>{suggestion.unit}</span>
+            </div>
+            <div style={{ fontSize: '9px', color: 'rgba(200,255,0,0.6)', marginTop: '2px', lineHeight: 1.3 }}>{suggestion.reason}</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Inline Set Logger — compact by default, expand on tap ────────────────
+function InlineSetLogger({ exerciseId, exerciseName, currentSet, targetReps, wLog }) {
+  const [weight, setWeight] = useState('');
+  const [reps,   setReps]   = useState(String(targetReps));
+  const [unit,   setUnit]   = useState(() => {
+    try { return getExerciseSessions(exerciseId, 1)[0]?.sets?.[0]?.unit || 'kg'; }
+    catch { return 'kg'; }
+  });
+  const [open,   setOpen]   = useState(false);
+  const [saved,  setSaved]  = useState(false);
+
+  useEffect(() => {
+    const s = getProgressionSuggestion(exerciseId, targetReps);
+    if (s && !weight) setWeight(String(s.suggestedWeight));
+  }, [exerciseId, targetReps]); // eslint-disable-line
+
+  const sets = wLog.activeSession?.sets || [];
+
+  const handleLog = () => {
+    if (!weight || !reps) return;
+    wLog.logSet(weight, unit, reps);
+    setSaved(true);
+    setOpen(false);
+    setTimeout(() => setSaved(false), 1000);
+    if (navigator.vibrate) navigator.vibrate([6, 40, 6]);
+  };
+
+  const nudge = (field, delta) => {
+    if (field === 'weight') {
+      const step = unit === 'kg' ? 2.5 : 5;
+      setWeight(v => String(Math.max(0, parseFloat(v || 0) + delta * step)));
+    } else {
+      setReps(v => String(Math.max(1, parseInt(v || 1) + delta)));
+    }
+  };
+
+  return (
+    <div style={{ marginBottom: '10px' }}>
+      {/* ── Collapsed row: logged chips + Log button ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '6px',
+        background: 'rgba(0,0,0,0.55)', borderRadius: '14px',
+        border: `1px solid ${open ? 'rgba(200,255,0,0.4)' : 'rgba(255,255,255,0.1)'}`,
+        padding: '8px 12px', cursor: 'pointer',
+        transition: 'border-color 0.15s',
+      }} onClick={() => setOpen(v => !v)}>
+
+        {/* Set label */}
+        <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--accent)', letterSpacing: '0.03em', flexShrink: 0 }}>
+          Set {currentSet}
+        </span>
+
+        {/* Logged set chips */}
+        <div style={{ display: 'flex', gap: '4px', flex: 1, overflowX: 'auto', scrollbarWidth: 'none' }}>
+          {sets.map((s, i) => (
+            <div key={i} style={{
+              background: 'rgba(200,255,0,0.12)', border: '1px solid rgba(200,255,0,0.2)',
+              borderRadius: '7px', padding: '2px 8px',
+              fontSize: '11px', fontWeight: 700, color: 'var(--accent)', flexShrink: 0,
+            }}>
+              {s.weight}{s.unit}×{s.reps}
+            </div>
+          ))}
+          {sets.length === 0 && (
+            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>
+              Tap to log set
+            </span>
+          )}
+        </div>
+
+        {/* Chevron */}
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" strokeLinecap="round"
+          style={{ flexShrink: 0, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+
+      {/* ── Expanded logger ── */}
       {open && (
-        <div style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '14px', padding: '12px 14px', marginTop: '4px', animation: 'slideUp 0.2s both' }}>
-          {/* Logged sets */}
+        <div style={{
+          background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(20px)',
+          borderRadius: '14px', padding: '14px',
+          marginTop: '4px', border: '1px solid rgba(255,255,255,0.1)',
+          animation: 'slideUp 0.18s cubic-bezier(0.16,1,0.3,1) both',
+        }}>
+          {/* Undo chip */}
           {sets.length > 0 && (
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '10px', alignItems: 'center' }}>
               {sets.map((s, i) => (
-                <div key={i} style={{ background: 'rgba(200,255,0,0.12)', border: '1px solid rgba(200,255,0,0.2)', borderRadius: '8px', padding: '4px 10px', fontSize: '11px', fontWeight: 700, color: 'var(--accent)' }}>
-                  Set {s.set}: {s.weight}{s.unit} × {s.reps}
+                <div key={i} style={{ background: 'rgba(200,255,0,0.1)', border: '1px solid rgba(200,255,0,0.2)', borderRadius: '8px', padding: '3px 9px', fontSize: '11px', fontWeight: 700, color: 'var(--accent)' }}>
+                  S{i+1}: {s.weight}{s.unit}×{s.reps}
                 </div>
               ))}
+              <button onClick={wLog.undoLastSet} style={{ background: 'rgba(255,59,59,0.12)', border: '1px solid rgba(255,59,59,0.2)', borderRadius: '8px', padding: '3px 9px', fontSize: '11px', fontWeight: 700, color: '#FF6B6B', cursor: 'pointer', fontFamily: 'inherit' }}>Undo</button>
             </div>
           )}
-          {/* Input row */}
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <input type="number" inputMode="decimal" min="0" value={weight} onChange={e => setWeight(e.target.value)}
-              placeholder="Weight" onKeyDown={e => e.key === 'Enter' && logSet()}
-              style={{ flex: 1, padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: '16px', fontWeight: 800, outline: 'none', fontFamily: 'inherit', textAlign: 'center' }} />
-            {/* kg/lb toggle */}
-            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.08)', borderRadius: '8px', padding: '2px' }}>
-              {['kg','lb'].map(u => (
-                <button key={u} onClick={() => setUnit(u)}
-                  style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: unit === u ? 'var(--accent)' : 'transparent', color: unit === u ? '#000' : 'rgba(255,255,255,0.5)', fontSize: '11px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.12s ease' }}>
-                  {u}
-                </button>
-              ))}
+
+          {/* Weight + Reps row */}
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+            {/* Weight */}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px', textAlign: 'center' }}>Weight</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <button onClick={() => nudge('weight', -1)} style={{ width: 44, height: 52, borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: '22px', fontWeight: 300, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                <input type="number" inputMode="decimal" value={weight} onChange={e => setWeight(e.target.value)}
+                  style={{ flex: 1, height: 52, padding: '0 4px', borderRadius: '10px', border: '1.5px solid rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: '26px', fontWeight: 900, outline: 'none', fontFamily: 'inherit', textAlign: 'center', letterSpacing: '-0.04em', boxSizing: 'border-box' }}
+                />
+                <button onClick={() => nudge('weight', 1)} style={{ width: 44, height: 52, borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: '22px', fontWeight: 300, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginTop: '4px' }}>
+                {['kg','lb'].map(u => (
+                  <button key={u} onClick={() => setUnit(u)} style={{ padding: '2px 9px', borderRadius: '99px', border: 'none', background: unit===u?'var(--accent)':'rgba(255,255,255,0.08)', color: unit===u?'#000':'rgba(255,255,255,0.4)', fontSize: '10px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{u}</button>
+                ))}
+              </div>
             </div>
-            <button onClick={logSet} disabled={!weight}
-              style={{ padding: '10px 14px', borderRadius: '10px', border: 'none', background: weight ? 'var(--accent)' : 'rgba(255,255,255,0.1)', color: weight ? '#000' : 'rgba(255,255,255,0.3)', fontSize: '12px', fontWeight: 800, cursor: weight ? 'pointer' : 'not-allowed', fontFamily: 'inherit', whiteSpace: 'nowrap', transition: 'all 0.15s ease' }}>
-              + Log Set {currentSet}
-            </button>
+
+            <div style={{ color: 'rgba(255,255,255,0.2)', fontSize: '18px', fontWeight: 300, marginTop: '-12px' }}>×</div>
+
+            {/* Reps */}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '9px', fontWeight: 700, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px', textAlign: 'center' }}>Reps</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <button onClick={() => nudge('reps', -1)} style={{ width: 44, height: 52, borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: '22px', fontWeight: 300, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                <input type="number" inputMode="numeric" value={reps} onChange={e => setReps(e.target.value)}
+                  style={{ flex: 1, height: 52, padding: '0 4px', borderRadius: '10px', border: '1.5px solid rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.1)', color: 'var(--accent)', fontSize: '26px', fontWeight: 900, outline: 'none', fontFamily: 'inherit', textAlign: 'center', letterSpacing: '-0.04em', boxSizing: 'border-box' }}
+                />
+                <button onClick={() => nudge('reps', 1)} style={{ width: 44, height: 52, borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: '22px', fontWeight: 300, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
+              </div>
+            </div>
           </div>
+
+          {/* Log button */}
+          <button onClick={handleLog} disabled={!weight || !reps}
+            style={{
+              width: '100%', height: 50, borderRadius: '13px', border: 'none',
+              background: (weight && reps) ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
+              color: (weight && reps) ? '#000' : 'rgba(255,255,255,0.2)',
+              fontSize: '14px', fontWeight: 800, cursor: (weight && reps) ? 'pointer' : 'not-allowed',
+              fontFamily: 'inherit', letterSpacing: '-0.01em',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Log Set {currentSet}
+          </button>
         </div>
       )}
     </div>
@@ -348,6 +467,9 @@ export default function WorkoutPage() {
   const { isPro } = usePro();
   const exerciseId = searchParams.get('exercise') || 'pushup';
   const exercise = getExerciseById(exerciseId) || getExerciseById('pushup');
+  const isPose = exercise?.isPose === true || exerciseId.startsWith('pose-');
+  // If navigated with ?autostart=1, skip pre-start screen entirely
+  const autoStart = searchParams.get('autostart') === '1';
 
   // ── SmartBurnEngine ────────────────────────────────────────────────────
   const { weightKg } = useBodyProfile();
@@ -394,6 +516,7 @@ export default function WorkoutPage() {
   // ── Camera state ──────────────────────────────────────────────────────
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [facingMode, setFacingMode] = useState('user');
+  const cameraPreloadedRef = useRef(false); // guard: only preload once
 
   // ── Workout state ─────────────────────────────────────────────────────
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
@@ -411,7 +534,7 @@ export default function WorkoutPage() {
   const [customReps, setCustomReps] = useState(null);
 
   // ── Camera capture state ──────────────────────────────────────────────
-  const [overlayMode, setOverlayMode] = useState('hud');   // clean | skeleton | hud
+  const [overlayMode, setOverlayMode] = useState('skeleton');  // clean | skeleton | hud
   const [isRecording, setIsRecording] = useState(false);
   const [recordElapsed, setRecordElapsed] = useState(0);
   const [captureFlash, setCaptureFlash] = useState(false);
@@ -419,9 +542,20 @@ export default function WorkoutPage() {
   const [toastMsg, setToastMsg] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
 
+  // ── Workout Log — must be declared before any useEffect that uses it ──
+  const wLog = useWorkoutLog();
+
   // ── PR Celebration state ───────────────────────────────────────────────
   const [prVisible, setPrVisible] = useState(false);
   const [prData, setPrData] = useState({ weight: 0, unit: 'kg' });
+
+  // Also fire PR celebration from wLog (weight logger PRs)
+  useEffect(() => {
+    if (wLog.lastPR) {
+      setPrData({ weight: wLog.lastPR.weight, unit: wLog.lastPR.unit });
+      setPrVisible(true);
+    }
+  }, [wLog.lastPR]);
 
   const targetSets = customSets ?? exercise?.targetSets ?? 3;
   const targetReps = customReps ?? exercise?.targetReps ?? 12;
@@ -448,9 +582,9 @@ export default function WorkoutPage() {
     window.speechSynthesis.speak(utt);
   }, []);
 
-  // ── usePoseDetection MUST be called before any useEffect that uses its values ──
-  const { score, feedback, repCount, resetRepCount } = usePoseDetection(
-    videoRef, canvasRef, cameraEnabled && isWorkoutActive, facingMode
+  // ── usePoseDetection — enabled as soon as camera is turned on ──────────
+  const { isReady, score, feedback, repCount, resetRepCount } = usePoseDetection(
+    videoRef, canvasRef, cameraEnabled, facingMode, exerciseId
   );
 
   // Speak feedback whenever it changes during active workout
@@ -519,24 +653,50 @@ export default function WorkoutPage() {
     }, 3000);
   }, [isWorkoutActive]);
 
+  // ── Auto-start after mount when navigated with ?autostart=1 ──────────
+  // IMPORTANT: We cannot set cameraEnabled=true in useState because the video
+  // element doesn't exist in the DOM yet on first render (it only renders inside
+  // the active camera screen which needs isWorkoutActive=true).
+  // Solution: wait 2 rAF frames after mount so React has committed the DOM,
+  // THEN flip both flags. This is the only reliable cross-browser approach.
+  const autoStartFiredRef = useRef(false);
   useEffect(() => {
-    window.currentExerciseId = exerciseId;
-    return () => { window.currentExerciseId = null; };
-  }, [exerciseId]);
-
-  useEffect(() => () => {
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-  }, []);
 
-  // ── Start workout ─────────────────────────────────────────────────────
+    if (autoStart && !autoStartFiredRef.current) {
+      autoStartFiredRef.current = true;
+      // rAF × 2 = wait for browser to paint first frame, then start
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          cameraPreloadedRef.current = true;
+          setCameraEnabled(true);
+          setWorkoutStartTime(Date.now());
+          setIsWorkoutActive(true);
+          setShowControls(false);
+          wLog.startSession(exerciseId, exercise?.name || exerciseId);
+        });
+      });
+    }
+  }, []); // eslint-disable-line
+
+  // ── Start workout (manual — user pressed Start button) ───────────────
   const handleStart = () => {
-    setWorkoutStartTime(Date.now());
+    cameraPreloadedRef.current = true;
     setCameraEnabled(true);
+    setWorkoutStartTime(Date.now());
     setIsWorkoutActive(true);
     setShowControls(false);
     resetRepCount();
     handleTap();
+    wLog.startSession(exerciseId, exercise?.name || exerciseId);
   };
+
+  // ── Preload camera on first user gesture (pre-start screen) ───────────
+  const handlePreloadCamera = useCallback(() => {
+    if (cameraPreloadedRef.current) return;
+    cameraPreloadedRef.current = true;
+    setCameraEnabled(true);
+  }, []);
 
   // ── Stop / save workout ───────────────────────────────────────────────
   const stopWorkout = useCallback(() => {
@@ -547,7 +707,8 @@ export default function WorkoutPage() {
       : null;
     const caloriesBurned = finalBurn ? finalBurn.totalBurn : 0;
 
-    setWorkoutStats({ exercise, score: Math.round(score), reps: repCount, duration: duration || 0, caloriesBurned });
+    setWorkoutStats({ exercise, score: Math.round(score), reps: repCount, duration: duration || 0, caloriesBurned,
+      exerciseName: exercise?.name || exerciseId });
     setIsWorkoutActive(false);
     setShowShareCard(true);
     try {
@@ -588,6 +749,8 @@ export default function WorkoutPage() {
       });
       localStorage.setItem('bv-history', JSON.stringify(history.slice(-50)));
     } catch (err) { console.error('Save workout error:', err); }
+    // Finish workout log session
+    wLog.finishSession();
   }, [workoutStartTime, score, repCount, exercise, exerciseId]); // eslint-disable-line
 
   // ── Next set / rest ───────────────────────────────────────────────────
@@ -647,15 +810,9 @@ export default function WorkoutPage() {
     ctx.drawImage(video, 0, 0, w, h);
     ctx.restore();
 
-    // Skeleton overlay (skeleton or hud mode)
+    // Skeleton overlay (skeleton or hud mode) — canvas is already in mirrored coords
     if ((overlayMode === 'skeleton' || overlayMode === 'hud') && skelCanvas) {
-      ctx.save();
-      if (facingMode === 'user') {
-        ctx.translate(w, 0);
-        ctx.scale(-1, 1);
-      }
       ctx.drawImage(skelCanvas, 0, 0, w, h);
-      ctx.restore();
     }
 
     // HUD: score + rep counter + watermark burned in
@@ -726,7 +883,7 @@ export default function WorkoutPage() {
         a.href = url; a.download = file.name; a.click();
         URL.revokeObjectURL(url);
       }
-      showToast('📸 Photo saved!');
+      showToast('Photo saved!');
     }, 'image/jpeg', 0.93);
   }, [buildCompositeFrame, exerciseId, exercise, score, showToast]);
 
@@ -780,7 +937,7 @@ export default function WorkoutPage() {
       a.download = `bodybvilder-${exerciseId}-${Date.now()}.${ext}`;
       a.click();
       URL.revokeObjectURL(url);
-      showToast('🎬 Video saved!');
+      showToast('Video saved!');
     };
     recorder.start(500);
     mediaRecorderRef.current = recorder;
@@ -806,38 +963,103 @@ export default function WorkoutPage() {
   }, [isRecording, stopRecording, handleCountdownRecord]);
 
   // ── PRE-START SCREEN ──────────────────────────────────────────────────
-  if (!cameraEnabled) {
+  if (!isWorkoutActive) {
     return (
-      <div style={{ height: '100dvh', background: 'var(--bg-0)', overflowY: 'auto' }}>
+      <div
+        style={{
+          height: '100dvh', background: 'var(--bg-0)', overflowY: 'auto',
+          position: 'relative', overflow: 'hidden',
+          // Hide instantly when autoStart — will flip to active in 2 rAF frames
+          opacity: autoStart ? 0 : 1,
+          pointerEvents: autoStart ? 'none' : 'auto',
+        }}
+        onPointerDown={handlePreloadCamera}
+      >
         <style>{`
           @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
           @keyframes countPop { from { opacity:0; transform:scale(0.4); } to { opacity:1; transform:scale(1); } }
           @keyframes pulseDot { 0%,100%{opacity:1} 50%{opacity:0.3} }
+          @keyframes spin { to { transform: rotate(360deg); } }
         `}</style>
+
+        {/* ── Video feed always in DOM (refs must never detach) ── */}
+        {/* Dark gradient overlay so content stays readable */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.72) 100%)',
+          pointerEvents: 'none',
+        }} />
+
+        {/* Scrollable content layer */}
+        <div style={{ position: 'relative', zIndex: 1, height: '100%', overflowY: 'auto' }}>
 
         {/* Header */}
         <div style={{ padding: '20px 20px 0', display: 'flex', alignItems: 'center' }}>
           <button onClick={() => navigate('/')}
-            style={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '12px', padding: '10px', cursor: 'pointer', color: 'var(--text-0)', display: 'flex' }}>
+            style={{ background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '10px', cursor: 'pointer', color: '#fff', display: 'flex' }}>
             <ArrowLeftIcon />
           </button>
         </div>
 
         <div style={{ padding: '20px 20px calc(40px + env(safe-area-inset-bottom))', textAlign: 'center' }}>
-          {/* Exercise icon — custom SVG per equipment type */}
+          {/* AI status pill — shows while skeleton loads, fades when ready */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '5px 12px', borderRadius: '99px',
+            background: 'rgba(0,0,0,0.55)', border: `1px solid ${isReady ? 'rgba(200,255,0,0.4)' : 'rgba(255,255,255,0.15)'}`,
+            fontSize: '11px', fontWeight: 700, letterSpacing: '0.04em',
+            color: isReady ? 'var(--accent)' : 'rgba(255,255,255,0.6)',
+            marginBottom: '14px', transition: 'all 0.4s ease',
+            animation: 'fadeUp 0.4s both',
+          }}>
+            {isReady ? (
+              <>
+                <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="#C8FF00"/></svg>
+                AI skeleton ready
+              </>
+            ) : (
+              <>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
+                Loading AI...
+              </>
+            )}
+          </div>
+          {/* Icon — trophy for pose, equipment icon for exercise */}
           <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--accent-dim)', border: '2px solid rgba(200,255,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', animation: 'fadeUp 0.4s both' }}>
-            <ExerciseIcon
-              equipment={exercise?.equipment}
-              category={exercise?.category}
-              size={38}
-              color="var(--accent)"
-              strokeWidth={1.6}
-            />
+            {isPose ? (
+              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                <path d="M4 22h16"/>
+                <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
+                <line x1="12" y1="15" x2="12" y2="22"/>
+                <path d="M9 18c1.5 1 4.5 1 6 0"/>
+              </svg>
+            ) : (
+              <ExerciseIcon
+                equipment={exercise?.equipment}
+                category={exercise?.category}
+                size={38}
+                color="var(--accent)"
+              />
+            )}
           </div>
 
-          {/* Category */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '99px', background: 'var(--bg-1)', border: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, color: 'var(--text-2)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '12px', animation: 'fadeUp 0.4s 0.04s both' }}>
-            {exercise?.category || 'exercise'}
+          {/* Category badge */}
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '99px', background: 'var(--bg-1)', border: '1px solid var(--border)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '12px', animation: 'fadeUp 0.4s 0.04s both',
+            color: isPose ? 'var(--accent)' : 'var(--text-2)',
+            borderColor: isPose ? 'rgba(200,255,0,0.3)' : 'var(--border)',
+            background: isPose ? 'var(--accent-dim)' : 'var(--bg-1)',
+          }}>
+            {isPose && (
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="var(--accent)">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            )}
+            {isPose
+              ? (exercise?.division === 'mens-physique' ? "Men's Physique" : 'Classic — IFBB')
+              : (exercise?.category || 'exercise')
+            }
           </div>
 
           <h2 style={{ fontSize: 'clamp(26px,7vw,36px)', fontWeight: 900, color: 'var(--text-0)', letterSpacing: '-0.04em', lineHeight: 1.05, marginBottom: '12px', animation: 'fadeUp 0.4s 0.07s both' }}>
@@ -850,30 +1072,40 @@ export default function WorkoutPage() {
           {/* Exercise preview — GIF from ExerciseDB + muscle diagram */}
           <div style={{ animation: 'fadeUp 0.4s 0.12s both', marginBottom: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-              <ExerciseGif exerciseId={exerciseId} size={220} />
+              <ExerciseGif exerciseId={exerciseId} size={240} />
             </div>
-            {/* Muscle diagram row below rig */}
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'center' }}>
-              <MuscleDiagram muscles={exercise?.muscles || []} exerciseId={exerciseId} size={80} />
-              <MuscleList muscles={exercise?.muscles || []} />
-            </div>
+            {/* Muscle diagram — only for exercises, not poses */}
+            {!isPose && (
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', justifyContent: 'center' }}>
+                <MuscleDiagram muscles={exercise?.muscles || []} exerciseId={exerciseId} size={80} />
+                <MuscleList muscles={exercise?.muscles || []} />
+              </div>
+            )}
           </div>
 
-          {/* Stats row */}
-          <div style={{ display: 'flex', gap: '1px', background: 'var(--border)', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)', marginBottom: '20px', animation: 'fadeUp 0.4s 0.14s both' }}>
+          {/* Stats row — hide for poses */}
+          {!isPose && (
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', animation: 'fadeUp 0.4s 0.14s both' }}>
             {[
               { val: `${targetSets}×${exercise?.isTimed ? `${targetReps}s` : targetReps}`, label: 'Target' },
               { val: exercise?.difficulty || 'beginner', label: 'Level' },
               { val: exercise?.equipment === 'none' ? 'No gear' : exercise?.equipment || '—', label: 'Equipment' },
             ].map((s, i) => (
-              <div key={i} style={{ flex: 1, padding: '14px 8px', textAlign: 'center', background: 'var(--bg-1)' }}>
-                <div style={{ fontSize: '13px', fontWeight: 800, color: i === 0 ? 'var(--accent)' : 'var(--text-0)', marginBottom: '3px' }}>{s.val}</div>
+              <div key={i} style={{ flex: 1, padding: '12px 8px', textAlign: 'center', background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '14px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: i === 0 ? 'var(--accent)' : 'var(--text-0)', marginBottom: '3px', textTransform: i === 1 ? 'capitalize' : undefined }}>{s.val}</div>
                 <div style={{ fontSize: '10px', color: 'var(--text-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
               </div>
             ))}
           </div>
+          )}
 
-          {/* Sets & Reps picker */}
+          {/* Progressive overload badge — shows last session + today's suggestion */}
+          {!isPose && (
+            <ProgressionBadge exerciseId={exerciseId} targetReps={targetReps} />
+          )}
+
+          {/* Sets & Reps picker — hide for poses */}
+          {!isPose && (
           <div style={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '16px', padding: '16px', marginBottom: '16px', animation: 'fadeUp 0.4s 0.16s both' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-2)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Sets &amp; Reps</span>
@@ -891,13 +1123,13 @@ export default function WorkoutPage() {
                     <div style={{ fontSize: '10px', color: 'var(--text-3)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '8px' }}>{item.label}</div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                       <button onClick={() => item.set(Math.max(item.min, item.val - 1))}
-                        style={{ width: '30px', height: '30px', borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-2)', color: 'var(--text-0)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-2)', color: 'var(--text-0)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
                       </button>
-                      <span style={{ fontSize: '26px', fontWeight: 900, color: item.accent ? 'var(--accent)' : 'var(--text-0)', minWidth: '32px', textAlign: 'center', letterSpacing: '-0.04em' }}>{item.val}</span>
+                      <span style={{ fontSize: '26px', fontWeight: 900, color: item.accent ? 'var(--accent)' : 'var(--text-0)', minWidth: '36px', textAlign: 'center', letterSpacing: '-0.04em' }}>{item.val}</span>
                       <button onClick={() => item.set(Math.min(item.max, item.val + 1))}
-                        style={{ width: '30px', height: '30px', borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-2)', color: 'var(--text-0)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--border)', background: 'var(--bg-2)', color: 'var(--text-0)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                       </button>
                     </div>
                   </div>
@@ -905,14 +1137,41 @@ export default function WorkoutPage() {
               ))}
             </div>
           </div>
+          )}
+
+          {/* Pose — how it works info card */}
+          {isPose && (
+            <div style={{
+              background: 'var(--bg-1)', border: '1px solid var(--border)',
+              borderRadius: '16px', padding: '16px', marginBottom: '16px',
+              animation: 'fadeUp 0.4s 0.16s both',
+            }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-2)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '12px' }}>
+                How it works
+              </div>
+              {[
+                { iconEl: (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"><rect x="2" y="8" width="20" height="12" rx="3"/><path d="M8 8V6a4 4 0 018 0v2"/><line x1="9" y1="14" x2="9" y2="14" strokeWidth="3"/><line x1="15" y1="14" x2="15" y2="14" strokeWidth="3"/></svg>), text: 'AI scores your pose in real-time' },
+                { iconEl: (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>), text: 'Hold 70+ score for 2.5s to count' },
+                { iconEl: (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.2" strokeLinecap="round"><path d="M6 9H4.5a2.5 2.5 0 010-5H6M18 9h1.5a2.5 2.5 0 000-5H18M4 22h16M18 2H6v7a6 6 0 0012 0V2z"/><line x1="12" y1="15" x2="12" y2="22"/></svg>), text: 'Best score saved automatically' },
+              ].map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: i < 2 ? '8px' : 0 }}>
+                  <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'var(--accent-dim)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
+                    {item.iconEl}
+                  </div>
+                  <span style={{ fontSize: '13px', color: 'var(--text-1)' }}>{item.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Start button */}
           <button onClick={handleStart}
             style={{ width: '100%', padding: '18px', borderRadius: '16px', border: 'none', background: 'var(--gradient-accent)', color: '#000', fontSize: '17px', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', letterSpacing: '-0.01em', boxShadow: 'var(--accent-glow)', animation: 'fadeUp 0.4s 0.18s both' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            Start {targetSets}×{targetReps}
+            {isPose ? 'Start Practice' : `Start ${targetSets}×${targetReps}`}
           </button>
         </div>
+        </div>{/* end scrollable content layer */}
       </div>
     );
   }
@@ -930,17 +1189,62 @@ export default function WorkoutPage() {
 
       {/* ── Video feed ── */}
       <video ref={videoRef}
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none' }}
+        style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          objectFit: 'cover',
+          // Mirror front cam for natural selfie view
+          transform: facingMode === 'user' ? 'scaleX(-1)' : 'none',
+          transformOrigin: 'center center',
+        }}
         playsInline muted />
 
       {/* ── Skeleton canvas ── */}
+      {/* Canvas must NOT be flipped — MediaPipe draws in raw camera coords.
+          Video is flipped for display, canvas stays unflipped so bones align. */}
       <canvas ref={canvasRef}
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', transform: facingMode === 'user' ? 'scaleX(-1)' : 'none', pointerEvents: 'none',
-          opacity: overlayMode === 'clean' ? 0 : 1, transition: 'opacity 0.2s ease' }} />
+        style={{
+          position: 'absolute', inset: 0, width: '100%', height: '100%',
+          pointerEvents: 'none',
+          opacity: overlayMode === 'clean' ? 0 : 1,
+          transition: 'opacity 0.2s ease',
+        }} />
 
       {/* ── Score + feedback overlay (visible in skeleton/hud modes) ── */}
       {overlayMode !== 'clean' && isWorkoutActive && (
         <SkeletonOverlay score={score} feedback={feedback} />
+      )}
+
+      {/* ── AI loading indicator — shown while MediaPipe initializes ── */}
+      {!isReady && isWorkoutActive && overlayMode !== 'clean' && (
+        <div style={{
+          position: 'absolute',
+          bottom: '140px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex', alignItems: 'center', gap: '10px',
+          background: 'rgba(0,0,0,0.72)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          borderRadius: '99px',
+          padding: '10px 18px',
+          border: '1px solid rgba(255,255,255,0.1)',
+          zIndex: 20,
+          pointerEvents: 'none',
+          animation: 'fadeIn 0.3s ease',
+          whiteSpace: 'nowrap',
+        }}>
+          <div style={{
+            width: '16px', height: '16px',
+            border: '2px solid rgba(200,255,0,0.3)',
+            borderTopColor: 'var(--accent)',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+            flexShrink: 0,
+          }} />
+          <span style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>
+            Loading AI skeleton...
+          </span>
+        </div>
       )}
 
       {/* ── Workout timer ── */}
@@ -968,11 +1272,63 @@ export default function WorkoutPage() {
         </div>
       )}
 
-      {/* ── Rep counter (large, bottom-center) ── */}
+      {/* ── Rep counter (large, center-screen) ── */}
       {isWorkoutActive && (
-        <div style={{ position: 'absolute', bottom: '130px', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', zIndex: 10, pointerEvents: 'none' }}>
-          <div style={{ fontSize: '80px', fontWeight: 900, color: '#fff', textShadow: '0 2px 24px rgba(0,0,0,0.6)', lineHeight: 1, letterSpacing: '-0.05em' }}>{repCount}</div>
-          <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '2px', marginTop: '2px' }}>{exercise?.isTimed ? 'Seconds' : 'Reps'}</div>
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          textAlign: 'center',
+          zIndex: 10,
+          pointerEvents: 'none',
+          /* Push slightly up so it doesn't clash with bottom controls */
+          marginTop: '-60px',
+        }}>
+          {/* Rep count big number */}
+          <div style={{
+            fontSize: '96px',
+            fontWeight: 900,
+            color: '#fff',
+            textShadow: '0 2px 32px rgba(0,0,0,0.7)',
+            lineHeight: 1,
+            letterSpacing: '-0.06em',
+            /* Subtle glow that changes with rep */
+            filter: `drop-shadow(0 0 24px rgba(200,255,0,0.18))`,
+          }}>
+            {repCount}
+          </div>
+          <div style={{
+            fontSize: '11px',
+            color: 'rgba(255,255,255,0.5)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.18em',
+            marginTop: '4px',
+            fontWeight: 700,
+          }}>
+            {exercise?.isTimed ? 'Seconds' : 'Reps'}
+          </div>
+
+          {/* Progress bar toward target reps */}
+          {!exercise?.isTimed && targetReps > 0 && (
+            <div style={{
+              marginTop: '10px',
+              width: '80px',
+              height: '3px',
+              background: 'rgba(255,255,255,0.15)',
+              borderRadius: '99px',
+              overflow: 'hidden',
+              margin: '10px auto 0',
+            }}>
+              <div style={{
+                height: '100%',
+                width: `${Math.min((repCount / targetReps) * 100, 100)}%`,
+                background: repCount >= targetReps ? 'var(--accent)' : 'rgba(255,255,255,0.6)',
+                borderRadius: '99px',
+                transition: 'width 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+              }}/>
+            </div>
+          )}
         </div>
       )}
 
@@ -1059,78 +1415,86 @@ export default function WorkoutPage() {
 
         {/* Tips panel */}
         {showTips && exercise?.tips && (
-          <div style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: '16px', padding: '14px 16px', marginBottom: '12px', border: '1px solid rgba(255,255,255,0.08)', animation: 'slideUp 0.25s both' }}>
-            <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '10px' }}>Form Tips</p>
+          <div style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', borderRadius: '16px', padding: '14px 16px', marginBottom: '10px', border: '1px solid rgba(255,255,255,0.08)', animation: 'slideUp 0.25s both' }}>
+            <p style={{ fontSize: '10px', fontWeight: 700, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>Form Tips</p>
             {exercise.tips.map((tip, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '4px 0', color: 'rgba(255,255,255,0.85)', fontSize: '13px', lineHeight: 1.4 }}>
-                <CheckIcon size={14} />
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '3px 0', color: 'rgba(255,255,255,0.85)', fontSize: '12px', lineHeight: 1.4 }}>
+                <CheckIcon size={13} />
                 {tip}
               </div>
             ))}
           </div>
         )}
 
-        {/* Exercise name bar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-          <button onClick={() => navigate('/')}
-            style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', border: 'none', borderRadius: '12px', padding: '10px', cursor: 'pointer', color: '#fff', display: 'flex' }}>
-            <ArrowLeftIcon />
-          </button>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', letterSpacing: '-0.01em' }}>{exercise?.name || 'Workout'}</div>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', marginTop: '1px' }}>Set {currentSet} of {targetSets}</div>
-          </div>
-          {/* Score mini pill */}
-          <div style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(10px)', borderRadius: '12px', padding: '6px 12px', border: `1px solid ${scoreColor(score)}40` }}>
-            <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.45)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '1px' }}>Form</div>
-            <div style={{ fontSize: '20px', fontWeight: 900, color: scoreColor(score), lineHeight: 1, letterSpacing: '-0.04em' }}>{score}</div>
-          </div>
-        </div>
-
-        {/* Calorie burn display - disabled for debug */}
-        {false && isWorkoutActive && (
-          <div style={{ marginBottom: '8px' }}>
-            <CalorieBurnDisplay
-              burnData={burnData}
-              isActive={isWorkoutActive}
-              onSetupBody={() => navigate('/profile')}
-            />
-          </div>
-        )}
-
-        {/* Calorie burn display */}
-        {isWorkoutActive && (
-          <div style={{ marginBottom: '8px' }}>
-            <CalorieBurnDisplay
-              burnData={burnData}
-              isActive={isWorkoutActive}
-              onSetupBody={() => navigate('/profile')}
-            />
-          </div>
-        )}
-
-        {/* Strength logger */}
-        {isWorkoutActive && (
-          <StrengthLogger
+        {/* ── Compact Set Logger (expandable) ── */}
+        {isWorkoutActive && !isPose && (
+          <InlineSetLogger
             exerciseId={exerciseId}
-            exerciseName={exercise?.name}
+            exerciseName={exercise?.name || exerciseId}
             currentSet={currentSet}
-            targetSets={targetSets}
             targetReps={targetReps}
-            onNewPR={(w, u) => { setPrData({ weight: w, unit: u }); setPrVisible(true); }}
+            wLog={wLog}
           />
         )}
 
-        {/* Action buttons */}
-        <div style={{ display: 'flex', gap: '10px' }}>
+        {/* ── Calorie pill (compact) ── */}
+        {isWorkoutActive && burnData && burnData.totalBurn > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            marginBottom: '10px', padding: '6px 12px',
+            background: 'rgba(0,0,0,0.4)', borderRadius: '10px',
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#FF6B00" strokeWidth="0">
+              <path d="M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3C8.928 6.857 9.776 4.946 12 3c.5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 01-14 0c0-1.153.433-2.294 1-3A2.5 2.5 0 008.5 14.5z"/>
+            </svg>
+            <span style={{ fontSize: '13px', fontWeight: 800, color: '#fff' }}>{burnData.totalBurn} kcal</span>
+            {burnData.formMultiplier !== 1.0 && (
+              <span style={{ fontSize: '11px', fontWeight: 700, color: burnData.formMultiplier > 1 ? 'var(--accent)' : '#FF3B3B', marginLeft: 'auto' }}>
+                ×{burnData.formMultiplier.toFixed(2)} form
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* ── Action buttons: End + Next/Finish ── */}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {/* Exercise name (compact, left-aligned) */}
           <button
-            onClick={() => { resetRepCount(); setCameraEnabled(false); setIsWorkoutActive(false); setCurrentSet(1); if (isRecording) stopRecording(); }}
-            style={{ flex: 1, padding: '15px', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.18)', background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: '15px', fontWeight: 700, cursor: 'pointer', backdropFilter: 'blur(10px)', fontFamily: 'inherit' }}>
-            End
+            onClick={() => { resetRepCount(); cameraPreloadedRef.current = false; setCameraEnabled(false); setIsWorkoutActive(false); setCurrentSet(1); if (isRecording) stopRecording(); }}
+            style={{
+              width: 48, height: 48, borderRadius: '14px', border: '1px solid rgba(255,255,255,0.15)',
+              background: 'rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <rect x="3" y="3" width="18" height="18" rx="3"/>
+            </svg>
           </button>
           <button onClick={nextSet}
-            style={{ flex: 2, padding: '15px', borderRadius: '16px', border: 'none', background: 'var(--accent)', color: '#000', fontSize: '15px', fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '-0.01em' }}>
-            {currentSet < targetSets ? `Next Set →` : 'Finish Workout'}
+            style={{
+              flex: 1, height: 52, borderRadius: '16px', border: 'none',
+              background: 'var(--gradient-accent)', color: '#000',
+              fontSize: '16px', fontWeight: 800, cursor: 'pointer',
+              fontFamily: 'inherit', letterSpacing: '-0.01em',
+              boxShadow: 'var(--accent-glow)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            }}>
+            {currentSet < targetSets ? (
+              <>
+                Set {currentSet + 1}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </>
+            ) : (
+              <>
+                Done
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -1140,56 +1504,38 @@ export default function WorkoutPage() {
         <SmartRestTimer isActive={showRestTimer} duration={restDuration} onComplete={handleRestComplete} onSkip={handleRestComplete} />
       )}
 
-      {/* ── Share card ── */}
-      {showShareCard && workoutStats && (
-        <ShareCard exercise={workoutStats.exercise} score={workoutStats.score} reps={workoutStats.reps} duration={workoutStats.duration}
-          onClose={() => { setShowShareCard(false); navigate('/'); }} />
+      {/* ── PR Celebration overlay (fires during active workout) ── */}
+      {!showShareCard && (
+        <PRCelebration
+          weight={prData.weight}
+          unit={prData.unit}
+          visible={prVisible}
+          onDone={() => { setPrVisible(false); wLog.clearPR(); }}
+        />
       )}
 
-      {/* ── PR Celebration overlay ── */}
-      <PRCelebration
-        weight={prData.weight}
-        unit={prData.unit}
-        visible={prVisible}
-        onDone={() => setPrVisible(false)}
-      />
-
-      {/* ── Post-workout protein reminder ── */}
+      {/* ── Workout Summary (full-screen post-workout screen) ── */}
       {showShareCard && workoutStats && (
-        <div style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: 'linear-gradient(135deg, rgba(200,255,0,0.12), rgba(0,200,100,0.08))',
-          backdropFilter: 'blur(20px)',
-          borderTop: '1px solid rgba(200,255,0,0.25)',
-          padding: '14px 20px calc(14px + env(safe-area-inset-bottom))',
-          zIndex: 200,
-          display: 'flex', alignItems: 'center', gap: '12px',
-          animation: 'slideUp 0.4s cubic-bezier(0.16,1,0.3,1) both',
-          animationDelay: '0.6s',
-        }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(200,255,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 8h1a4 4 0 010 8h-1"/>
-              <path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/>
-              <line x1="6" y1="1" x2="6" y2="4"/>
-              <line x1="10" y1="1" x2="10" y2="4"/>
-              <line x1="14" y1="1" x2="14" y2="4"/>
-            </svg>
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--accent)', letterSpacing: '-0.01em' }}>
-              Protein window open — 2h left
-            </div>
-            <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', marginTop: '1px' }}>
-              0.4g/kg triggers max muscle protein synthesis
-            </div>
-          </div>
-          <button
-            onClick={() => navigate('/meal')}
-            style={{ padding: '8px 14px', borderRadius: '10px', border: 'none', background: 'var(--accent)', color: '#000', fontSize: '12px', fontWeight: 800, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>
-            Meal Plan
-          </button>
-        </div>
+        <WorkoutSummary
+          stats={{
+            exerciseName:  workoutStats.exerciseName,
+            score:         workoutStats.score,
+            repCount:      workoutStats.reps,
+            duration:      workoutStats.duration,
+            calories:      workoutStats.caloriesBurned,
+          }}
+          wLogSession={wLog.activeSession || (() => {
+            try {
+              const sessions = JSON.parse(localStorage.getItem('bv-wlog-sessions') || '[]');
+              return sessions[sessions.length - 1] || null;
+            } catch { return null; }
+          })()}
+          newPR={wLog.lastPR}
+          onClose={() => { setShowShareCard(false); wLog.clearPR(); navigate('/'); }}
+          onShare={() => {
+            /* ShareCard still available as secondary action */
+          }}
+        />
       )}
     </div>
   );
