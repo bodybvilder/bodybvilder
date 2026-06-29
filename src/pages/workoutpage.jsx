@@ -468,8 +468,6 @@ export default function WorkoutPage() {
   const exerciseId = searchParams.get('exercise') || 'pushup';
   const exercise = getExerciseById(exerciseId) || getExerciseById('pushup');
   const isPose = exercise?.isPose === true || exerciseId.startsWith('pose-');
-  // If navigated with ?autostart=1, skip pre-start screen entirely
-  const autoStart = searchParams.get('autostart') === '1';
 
   // ── SmartBurnEngine ────────────────────────────────────────────────────
   const { weightKg } = useBodyProfile();
@@ -516,7 +514,7 @@ export default function WorkoutPage() {
   // ── Camera state ──────────────────────────────────────────────────────
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [facingMode, setFacingMode] = useState('user');
-  const cameraPreloadedRef = useRef(false); // guard: only preload once
+  const cameraPreloadedRef = useRef(false);
 
   // ── Workout state ─────────────────────────────────────────────────────
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
@@ -654,42 +652,24 @@ export default function WorkoutPage() {
   }, [isWorkoutActive]);
 
   // ── Auto-start after mount when navigated with ?autostart=1 ──────────
-  // We must ensure video element is in the DOM BEFORE enabling the camera hook.
-  // Sequence:
-  //   rAF1: React commits pre-start screen (video el exists in pre-start DOM? No — only in active screen)
-  //   So we flip isWorkoutActive first to mount the video element, THEN enable camera on next frame.
-  const autoStartFiredRef = useRef(false);
   useEffect(() => {
     if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-
-    if (autoStart && !autoStartFiredRef.current) {
-      autoStartFiredRef.current = true;
-      requestAnimationFrame(() => {
-        // Frame 1: flip to active screen so video element mounts in DOM
-        setIsWorkoutActive(true);
-        setWorkoutStartTime(Date.now());
-        setShowControls(false);
-        wLog.startSession(exerciseId, exercise?.name || exerciseId);
-
-        requestAnimationFrame(() => {
-          // Frame 2: video element is now in DOM, safe to start camera
-          cameraPreloadedRef.current = true;
-          setCameraEnabled(true);
-        });
-      });
-    }
   }, []); // eslint-disable-line
 
   // ── Start workout (manual — user pressed Start button) ───────────────
   const handleStart = () => {
-    cameraPreloadedRef.current = true;
-    setCameraEnabled(true);
-    setWorkoutStartTime(Date.now());
+    // Step 1: flip to active screen so video element mounts in DOM
     setIsWorkoutActive(true);
+    setWorkoutStartTime(Date.now());
     setShowControls(false);
     resetRepCount();
-    handleTap();
     wLog.startSession(exerciseId, exercise?.name || exerciseId);
+
+    // Step 2: wait one frame for React to commit video element, THEN start camera
+    requestAnimationFrame(() => {
+      cameraPreloadedRef.current = true;
+      setCameraEnabled(true);
+    });
   };
 
   // ── Preload camera on first user gesture (pre-start screen) ───────────
@@ -967,13 +947,7 @@ export default function WorkoutPage() {
   if (!isWorkoutActive) {
     return (
       <div
-        style={{
-          height: '100dvh', background: 'var(--bg-0)', overflowY: 'auto',
-          position: 'relative', overflow: 'hidden',
-          // Hide instantly when autoStart — will flip to active in 2 rAF frames
-          opacity: autoStart ? 0 : 1,
-          pointerEvents: autoStart ? 'none' : 'auto',
-        }}
+        style={{ height: '100dvh', background: 'var(--bg-0)', overflowY: 'auto', position: 'relative', overflow: 'hidden' }}
         onPointerDown={handlePreloadCamera}
       >
         <style>{`

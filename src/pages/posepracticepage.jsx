@@ -24,7 +24,6 @@ export default function PosePracticePage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const poseId = searchParams.get('exercise') || 'pose-front-double-biceps';
-  const autoStart = searchParams.get('autostart') === '1';
   const pose = getExerciseById(poseId);
 
   const videoRef = useRef(null);
@@ -59,21 +58,7 @@ export default function PosePracticePage() {
   // Auto-start after mount when navigated with ?autostart=1
   const autoStartFiredRef = useRef(false);
   useEffect(() => {
-    if (autoStart && !autoStartFiredRef.current) {
-      autoStartFiredRef.current = true;
-      requestAnimationFrame(() => {
-        // Frame 1: flip UI to active so video element mounts in DOM
-        setStarted(true);
-        setPhase('idle');
-        setHoldCount(0);
-
-        requestAnimationFrame(() => {
-          // Frame 2: video in DOM, safe to enable camera
-          setCameraEnabled(true);
-          resetRepCount();
-        });
-      });
-    }
+    if (autoStartFiredRef.current) return; // keep for future use, no-op now
   }, []); // eslint-disable-line
 
   // Update score + hold logic
@@ -118,9 +103,10 @@ export default function PosePracticePage() {
     resetRepCount();
     setHoldCount(0);
     setBestScore(JSON.parse(localStorage.getItem(`bv-pose-${poseId}`) || '0'));
+    // Step 1: show camera screen so video element mounts in DOM
     setStarted(true);
     setPhase('idle');
-    // Enable camera on next frame so video element is in DOM first
+    // Step 2: wait one frame, then enable camera
     requestAnimationFrame(() => {
       setCameraEnabled(true);
     });

@@ -318,7 +318,7 @@ export default function PlanBuilderPage() {
                         )}
                       </div>
                       <button
-                        onClick={() => navigate(`/workout?exercise=${ex.exerciseId}&autostart=1`)}
+                        onClick={() => navigate(`/workout?exercise=${ex.exerciseId}`)}
                         style={{
                           width: '32px', height: '32px', borderRadius: '50%',
                           background: 'var(--accent)', border: 'none',
@@ -337,7 +337,7 @@ export default function PlanBuilderPage() {
               <button
                 onClick={() => {
                   const first = plan.days[activeDay].exercises?.[0];
-                  if (first) navigate(`/workout?exercise=${first.exerciseId}&autostart=1`);
+                  if (first) navigate(`/workout?exercise=${first.exerciseId}`);
                 }}
                 style={{
                   width: '100%', padding: '16px', borderRadius: '16px', border: 'none',

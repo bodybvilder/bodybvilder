@@ -431,7 +431,7 @@ function RoutineRunner({ routine, onClose }) {
       {/* Action buttons */}
       <div style={{ padding: '0 20px', paddingBottom: 'calc(24px + env(safe-area-inset-bottom))' }}>
         <button
-          onClick={() => navigate(`/workout?exercise=${ex.exerciseId}&autostart=1`)}
+          onClick={() => navigate(`/workout?exercise=${ex.exerciseId}`)}
           style={{
             width: '100%', padding: '16px', borderRadius: '16px', border: 'none',
             background: 'var(--gradient-accent)', color: '#000',

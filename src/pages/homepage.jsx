@@ -484,7 +484,7 @@ export default function HomePage({ user, isGuest }) {
               return (
                 <button
                   key={i}
-                  onClick={() => navigate(`/workout?exercise=${exId}&autostart=1`)}
+                  onClick={() => navigate(`/workout?exercise=${exId}`)}
                   style={{
                     flexShrink: 0,
                     display: 'flex', alignItems: 'center', gap: '10px',
@@ -800,7 +800,7 @@ function ExerciseCard({ exercise, index, navigate }) {
 
   return (
     <div
-      onClick={() => { hapticTap(); navigate(exercise.isPose ? `/pose?exercise=${exercise.id}&autostart=1` : `/workout?exercise=${exercise.id}&autostart=1`); }}
+      onClick={() => { hapticTap(); navigate(exercise.isPose ? `/pose?exercise=${exercise.id}` : `/workout?exercise=${exercise.id}`); }}
       onPointerDown={() => setPressed(true)}
       onPointerUp={() => setPressed(false)}
       onPointerLeave={() => setPressed(false)}

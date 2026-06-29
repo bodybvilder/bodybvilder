@@ -323,7 +323,7 @@ function OverviewTab({ totalStats, bvStats, sessions, earnedBadges, navigate }) 
               const maxW = s.sets?.length ? Math.max(...s.sets.map(x => x.weight || 0)) : null;
               const unit = s.sets?.[0]?.unit || 'kg';
               return (
-                <div key={i} onClick={() => navigate(`/workout?exercise=${s.exerciseId}&autostart=1`)}
+                <div key={i} onClick={() => navigate(`/workout?exercise=${s.exerciseId}`)}
                   style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', borderRadius: '12px', background: 'var(--bg-2)', cursor: 'pointer', transition: 'background 0.12s ease' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-3)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-2)'}
@@ -460,7 +460,7 @@ function PRsTab({ prs, navigate }) {
             const date = new Date(pr.date).toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
             return (
               <div key={id}
-                onClick={() => navigate(`/workout?exercise=${id}&autostart=1`)}
+                onClick={() => navigate(`/workout?exercise=${id}`)}
                 style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', borderRadius: '14px', background: 'var(--bg-2)', cursor: 'pointer', border: '1px solid transparent', transition: 'border-color 0.12s ease, background 0.12s ease', animation: `fadeUp 0.3s ${i * 0.04}s both` }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(200,255,0,0.2)'; e.currentTarget.style.background = 'var(--bg-3)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.background = 'var(--bg-2)'; }}
