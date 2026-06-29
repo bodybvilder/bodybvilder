@@ -55,12 +55,6 @@ export default function PosePracticePage() {
     poseId
   );
 
-  // Auto-start after mount when navigated with ?autostart=1
-  const autoStartFiredRef = useRef(false);
-  useEffect(() => {
-    if (autoStartFiredRef.current) return; // keep for future use, no-op now
-  }, []); // eslint-disable-line
-
   // Update score + hold logic
   useEffect(() => {
     if (!started) return;
@@ -190,8 +184,6 @@ export default function PosePracticePage() {
           display: 'flex', flexDirection: 'column',
           overflowY: 'auto',
           overflowX: 'hidden',
-          opacity: autoStart ? 0 : 1,
-          pointerEvents: autoStart ? 'none' : 'auto',
         }}>
           {/* Back */}
           <div style={{ padding: '20px 20px 0' }}>
