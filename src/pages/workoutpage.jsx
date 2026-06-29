@@ -514,7 +514,6 @@ export default function WorkoutPage() {
   // ── Camera state ──────────────────────────────────────────────────────
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [facingMode, setFacingMode] = useState('user');
-  const cameraPreloadedRef = useRef(false);
 
   // ── Workout state ─────────────────────────────────────────────────────
   const [isWorkoutActive, setIsWorkoutActive] = useState(false);
@@ -580,9 +579,9 @@ export default function WorkoutPage() {
     window.speechSynthesis.speak(utt);
   }, []);
 
-  // ── usePoseDetection — enabled only when camera AND workout are both active ─
+  // ── usePoseDetection — enabled when camera is on ──────────────────────
   const { isReady, score, feedback, repCount, resetRepCount } = usePoseDetection(
-    videoRef, canvasRef, cameraEnabled && isWorkoutActive, facingMode, exerciseId
+    videoRef, canvasRef, cameraEnabled, facingMode, exerciseId
   );
 
   // Speak feedback whenever it changes during active workout
@@ -651,12 +650,7 @@ export default function WorkoutPage() {
     }, 3000);
   }, [isWorkoutActive]);
 
-  // ── Auto-start after mount when navigated with ?autostart=1 ──────────
-  useEffect(() => {
-    if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-  }, []); // eslint-disable-line
-
-  // ── Start workout (manual — user pressed Start button) ───────────────
+  // ── Start workout ─────────────────────────────────────────────────────
   const handleStart = () => {
     setCameraEnabled(true);
     setIsWorkoutActive(true);
@@ -666,13 +660,6 @@ export default function WorkoutPage() {
     handleTap();
     wLog.startSession(exerciseId, exercise?.name || exerciseId);
   };
-
-  // ── Preload camera on first user gesture (pre-start screen) ───────────
-  const handlePreloadCamera = useCallback(() => {
-    if (cameraPreloadedRef.current) return;
-    cameraPreloadedRef.current = true;
-    setCameraEnabled(true);
-  }, []);
 
   // ── Stop / save workout ───────────────────────────────────────────────
   const stopWorkout = useCallback(() => {
@@ -939,12 +926,9 @@ export default function WorkoutPage() {
   }, [isRecording, stopRecording, handleCountdownRecord]);
 
   // ── PRE-START SCREEN ──────────────────────────────────────────────────
-  if (!cameraEnabled) {
+  if (!isWorkoutActive) {
     return (
-      <div
-        style={{ height: '100dvh', background: 'var(--bg-0)', overflowY: 'auto', position: 'relative', overflow: 'hidden' }}
-        onPointerDown={handlePreloadCamera}
-      >
+      <div style={{ height: '100dvh', background: 'var(--bg-0)', overflowY: 'auto', position: 'relative', overflow: 'hidden' }}>
         <style>{`
           @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
           @keyframes countPop { from { opacity:0; transform:scale(0.4); } to { opacity:1; transform:scale(1); } }
@@ -952,15 +936,9 @@ export default function WorkoutPage() {
           @keyframes spin { to { transform: rotate(360deg); } }
         `}</style>
 
-        {/* video+canvas hidden in DOM so refs are ready before Start is pressed */}
+        {/* video+canvas hidden in DOM so videoRef is valid when Start is pressed */}
         <video ref={videoRef} style={{ position: 'fixed', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }} playsInline muted />
         <canvas ref={canvasRef} style={{ position: 'fixed', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }} />
-        {/* Dark gradient overlay so content stays readable */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.72) 100%)',
-          pointerEvents: 'none',
-        }} />
 
         {/* Scrollable content layer */}
         <div style={{ position: 'relative', zIndex: 1, height: '100%', overflowY: 'auto' }}>
@@ -1433,7 +1411,7 @@ export default function WorkoutPage() {
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           {/* Exercise name (compact, left-aligned) */}
           <button
-            onClick={() => { resetRepCount(); cameraPreloadedRef.current = false; setCameraEnabled(false); setIsWorkoutActive(false); setCurrentSet(1); if (isRecording) stopRecording(); }}
+            onClick={() => { resetRepCount(); setCameraEnabled(false); setIsWorkoutActive(false); setCurrentSet(1); if (isRecording) stopRecording(); }}
             style={{
               width: 48, height: 48, borderRadius: '14px', border: '1px solid rgba(255,255,255,0.15)',
               background: 'rgba(255,255,255,0.08)', color: '#fff', cursor: 'pointer',

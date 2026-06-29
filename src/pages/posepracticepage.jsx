@@ -59,7 +59,10 @@ export default function PosePracticePage() {
   useEffect(() => {
     if (!started) return;
     setCurrentScore(score);
-    setFeedback(aiFeedback);
+    // Only show feedback from hook if it's not an error/loading message
+    if (aiFeedback && !aiFeedback.includes('error') && !aiFeedback.includes('permission') && !aiFeedback.includes('error')) {
+      setFeedback(aiFeedback);
+    }
 
     if (score >= 70) {
       if (!holdStartRef.current) {
