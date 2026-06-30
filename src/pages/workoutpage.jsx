@@ -574,7 +574,11 @@ export default function WorkoutPage() {
     utt.pitch = 1.0;
     utt.volume = 0.85;
     const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v => v.lang.startsWith('en') && v.localService) || voices[0];
+    // Priority: local English → any English (online) → fallback to first available
+    const preferred =
+      voices.find(v => v.lang.startsWith('en') && v.localService) ||
+      voices.find(v => v.lang.startsWith('en')) ||
+      voices[0];
     if (preferred) utt.voice = preferred;
     window.speechSynthesis.speak(utt);
   }, []);
