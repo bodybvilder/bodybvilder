@@ -1276,14 +1276,18 @@ export function usePoseDetection(videoRef, canvasRef, enabled, facingMode = 'use
           document.head.appendChild(s);
         });
 
-        // Load pose.js from local bundle — exposes window.Pose
-        await loadScript('/mediapipe/pose.js');
+        // Try local bundle first (works offline/APK), fall back to CDN
+        try {
+          await loadScript('/mediapipe/pose.js');
+        } catch {
+          await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js');
+        }
         if (cleanedUp) return;
 
         const PoseClass = window.Pose;
-        if (!PoseClass) throw new Error('Pose not found — local MediaPipe failed');
+        if (!PoseClass) throw new Error('Pose class not found after load attempts');
 
-        // Load drawing_utils from local bundle if available, else from import
+        // Load drawing_utils — local first, CDN fallback
         let drawConnectors, drawLandmarks;
         try {
           await loadScript('/mediapipe/drawing_utils.js');
@@ -1292,16 +1296,28 @@ export function usePoseDetection(videoRef, canvasRef, enabled, facingMode = 'use
             drawLandmarks  = window.drawLandmarks;
           } else { throw new Error('not in window'); }
         } catch {
-          // Fallback: import from npm (online only)
-          const du = await import('@mediapipe/drawing_utils');
-          drawConnectors = du.drawConnectors;
-          drawLandmarks  = du.drawLandmarks;
+          try {
+            await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils@0.3.1675466123/drawing_utils.js');
+            if (window.drawConnectors && window.drawLandmarks) {
+              drawConnectors = window.drawConnectors;
+              drawLandmarks  = window.drawLandmarks;
+            } else { throw new Error('not in window after CDN'); }
+          } catch {
+            const du = await import('@mediapipe/drawing_utils');
+            drawConnectors = du.drawConnectors;
+            drawLandmarks  = du.drawLandmarks;
+          }
         }
 
         if (cleanedUp) return;
 
+        // locateFile: try local first, if file 404s MediaPipe falls back to CDN
+        const CDN_BASE = 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404';
         const pose = new PoseClass({
-          locateFile: (file) => `/mediapipe/${file}`
+          locateFile: (file) => {
+            // Always serve from CDN — most reliable in production
+            return `${CDN_BASE}/${file}`;
+          }
         });
 
         pose.setOptions({
